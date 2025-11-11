@@ -23,9 +23,50 @@ void tokenise_input(char input[] ,char *args[]){
     }
 }
 
+
+void connect_to_server(char message[], client_t client){}
+
+void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
+    snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
+    (*client_messages_count)++;
+}
+
+
+void execute_command(command_t *command, client_t client, char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
+    switch(command->kind){
+        case CONN:
+            connect_to_server(command->message, client);
+            break;
+        case SAY:
+            global_say(command->message, client_messages, client_messages_count);
+    }
+}
+
+void command_handler(command_t *command, char * args[]){
+
+    if(strcmp(args[0], "conn") == 0){
+        command->kind = CONN;
+    } else if(strcmp(args[0], "say") == 0){
+        command->kind = SAY;
+    } else if(strcmp(args[0], "sayto") == 0){
+        command->kind = SAYTO;
+    } else if(strcmp(args[0], "mute") == 0){
+        command->kind = MUTE;
+    } else if(strcmp(args[0], "unmute") == 0){
+        command->kind = UNMUTE;
+    } else if(strcmp(args[0], "rename") == 0){
+        command->kind = RENAME;
+    } else if(strcmp(args[0], "disconn") == 0){
+        command->kind = DISCONN;
+    } else if(strcmp(args[0], "kick") == 0){
+        command->kind = KICK;
+    }
+    strcpy(command->message, args[1]);
+}   
 // client code
 int main(int argc, char *argv[])
-{
+{   
+    client_t client;
 
     char messages[MAX_MSGS][MAX_LEN];
     int message_count = 0;
@@ -54,8 +95,13 @@ int main(int argc, char *argv[])
 
         if (message_count < MAX_MSGS){
             tokenise_input(input, args);//error check input later
-            snprintf(messages[message_count], MAX_LEN + 6, "You: %s and %s", args[0], args[1]); // This is how we print to messages.
-            message_count++;
+
+            command_t command;
+            command_handler(&command, args);
+            execute_command(&command, client, messages, &message_count);
+
+
+          
         }
 
 

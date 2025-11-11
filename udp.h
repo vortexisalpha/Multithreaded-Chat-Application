@@ -11,6 +11,7 @@
 
 #define BUFFER_SIZE 1024
 #define SERVER_PORT 12000
+#define NAME_SIZE 20
 
 //COMMANDS
 
@@ -27,12 +28,15 @@ typedef enum {
 
 typedef struct {
     command_kind_t kind;
-    char client[100]; // change this in future to a client_t?
-    char message[100];    
-
+    char message[BUFFER_SIZE];    
 } command_t;
 
+//client
+typedef struct {
+    char name[NAME_SIZE];
+    int port;
 
+} client_t;
 
 //Takes in a socket address and puts the ip and the port in the socket address in "The correct format", Returns 0 if success else -1
 int set_socket_addr(struct sockaddr_in *addr, const char *ip, int port)
