@@ -84,8 +84,8 @@ int udp_socket_read(int sd, struct sockaddr_in *addr, char *buffer, int n)
     socklen_t len = sizeof(struct sockaddr_in);
     return recvfrom(sd, buffer, n, 0, (struct sockaddr *)addr, &len);
 }
-//sleep thread and await sending of a message inside buffer of size n bytes to an address over a socket (sd), Returns n bytes sent else -1 for error/ 0 for closed connection.
 
+//sleep thread and await sending of a message inside buffer of size n bytes to an address over a socket (sd), Returns n bytes sent else -1 for error/ 0 for closed connection.
 int udp_socket_write(int sd, struct sockaddr_in *addr, char *buffer, int n)
 {
     // Send the contents of buffer (n bytes) to the given destination

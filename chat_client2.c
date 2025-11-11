@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "udp.h"
 
-#define CLIENT_PORT 10000
+#define CLIENT_PORT 15000
 
 // client code
 int main(int argc, char *argv[])

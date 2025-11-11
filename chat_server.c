@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 
     assert(sd > -1);
 
-    // Server main loop
+    // Server main loopw
     while (1) 
     {
         // Storage for request and response messages
@@ -38,6 +38,9 @@ int main(int argc, char *argv[])
             strcpy(server_response, "Hi, the server has received: ");
             strcat(server_response, client_request);
             strcat(server_response, "\n");
+            char* port_n;
+            sprintf(port_n, "client port: %d", ntohs(client_address.sin_port));
+            strcat(server_response, port_n);
 
             // This function writes back to the incoming client,
             // whose address is now available in client_address, 
