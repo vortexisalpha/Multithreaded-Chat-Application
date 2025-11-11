@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     // binding it to all IP interfaces of this machine,
     // and port number CLIENT_PORT.
     // (See details of the function in udp.h)
-    int sd = udp_socket_open(CLIENT_PORT);
+    int sd = udp_socket_open(0);
 
     // Variable to store the server's IP address and port
     // (i.e. the server we are trying to contact).

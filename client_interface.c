@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "udp.h"
 
-#define CLIENT_PORT 10000
+#define SAFETY_PORT 10000
 #define MAX_MSGS 100
 #define MAX_LEN 1024
 
@@ -24,7 +24,26 @@ void tokenise_input(char input[] ,char *args[]){
 }
 
 
-void connect_to_server(char message[], client_t client){}
+void connect_to_server(char message[], client_t * client){
+    // os has built in system to assign an unused port -> set udp_socket_open param to 0
+
+    int sd = udp_socket_open(0);
+    struct sockaddr_in server_addr, responder_addr;
+
+    int rc = set_socket_addr(&server_addr, "127.0.0.1", SERVER_PORT);
+    char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
+    strcpy(client_request, "TESTCON");
+    rc = udp_socket_write(sd, &server_addr, client_request, BUFFER_SIZE);
+    if (rc > 0)
+    {
+        int rc = udp_socket_read(sd, &responder_addr, server_response, BUFFER_SIZE);
+        printf("server_response: %s", server_response);
+    }
+
+    strcpy(client->name, message);
+    client->port = ntohs(responder_addr.sin_port);
+    printf("%s\n",(char *)client->port);
+}
 
 void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
     snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
@@ -32,7 +51,7 @@ void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * c
 }
 
 
-void execute_command(command_t *command, client_t client, char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
+void execute_command(command_t *command, client_t *client, char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
     switch(command->kind){
         case CONN:
             connect_to_server(command->message, client);
@@ -74,7 +93,7 @@ int main(int argc, char *argv[])
     char input[MAX_LEN];
 
     while(1){
-        clear_screen();
+        ///clear_screen();
         printf("Chat Messages\n\n");
 
         for (int i = 0; i < message_count; i++){
@@ -98,7 +117,7 @@ int main(int argc, char *argv[])
 
             command_t command;
             command_handler(&command, args);
-            execute_command(&command, client, messages, &message_count);
+            execute_command(&command, &client, messages, &message_count);
 
 
           
