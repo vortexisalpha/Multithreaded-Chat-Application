@@ -46,9 +46,8 @@ typedef struct {
 
 void setup_client(client_t* client){
     client->connected = false;
-    client->port = NULL;
-    client->name = NULL;
-    client->sd = NULL;
+    client->port = 0;
+    client->sd = 0;
 }
 //Takes in a socket address and puts the ip and the port in the socket address in "The correct format", Returns 0 if success else -1
 int set_socket_addr(struct sockaddr_in *addr, const char *ip, int port)
