@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 #include "udp.h"
 
 #define SAFETY_PORT 10000
@@ -43,6 +44,26 @@ void connect_to_server(char message[], client_t * client){
     strcpy(client->name, message);
     client->port = ntohs(responder_addr.sin_port);
     printf("%i\n",client->port);
+}
+
+void message_flash(char * message){
+    clear_screen();
+    time_t start;
+    start = time(NULL);
+
+    time_t time_diff = time(NULL) - start;
+    while(time_diff < 3) {
+        time_diff = time(NULL) - start;
+        printf("Message: %s", message);
+
+        bool toggle_message = (time_diff < 2 && time_diff > 1);
+        if (toggle_message) clear_screen();
+        while(toggle_message){
+            time_diff = time(NULL) - start;
+            toggle_message = (time_diff < 2 && time_diff > 1);
+        }
+    }
+
 }
 
 void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
