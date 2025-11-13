@@ -37,6 +37,7 @@ typedef struct {
     char name[NAME_SIZE];
     int port;
     bool connected;
+    int sd;
     struct sockaddr_in server_addr;
     struct sockaddr_in responder_addr;
 
