@@ -35,11 +35,11 @@ void connect_to_server(char message[], client_t * client){
     char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
     strcpy(client_request, "TESTCON");
     rc = udp_socket_write(sd, &server_addr, client_request, BUFFER_SIZE);
-    if (rc > 0)
+   if (rc > 0)
     {
         int rc = udp_socket_read(sd, &responder_addr, server_response, BUFFER_SIZE);
         printf("server_response: %s", server_response);
-    }
+    } 
 
     strcpy(client->name, message);
     client->port = ntohs(responder_addr.sin_port);
@@ -60,7 +60,15 @@ void message_flash(char * message){
     }
 }
 
-
+void send_signal(client_t * client, char * client_request){
+    int rc = udp_socket_write(client->sd, &client->server_addr, client_request, BUFFER_SIZE);
+    char * server_response;
+    if (rc > 0)
+    {
+        int rc = udp_socket_read(client->sd, &client->responder_addr, server_response, BUFFER_SIZE);
+        printf("server_response: %s", server_response);
+    } 
+}
 
 void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
     if (!client->connected){
