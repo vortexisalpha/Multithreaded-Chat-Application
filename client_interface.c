@@ -47,29 +47,19 @@ void connect_to_server(char message[], client_t * client){
 }
 
 void message_flash(char * message){
-    
-    time_t start;
-    start = time(NULL);
-
-    time_t time_diff = time(NULL) - start;
     clear_screen();
-    while(time_diff < 3) {
-        time_diff = time(NULL) - start;
-        printf("Message: %s", message);
-
-        bool toggle_message = (time_diff < 2 && time_diff > 1);
-        if (toggle_message) clear_screen();
-        while(toggle_message){
-            time_diff = time(NULL) - start;
-            toggle_message = (time_diff < 2 && time_diff > 1);
-        }
+    for (int i = 0; i < 4; i++){
+        printf("Message: %s\n", message);
+        usleep(1000000); // sleep 1 sec
+        clear_screen();
+        fflush(stdout);
+        usleep(1000000);
     }
-
 }
 
 void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
     if (!client->connected){
-        message_flash("Client Not Connected");
+        message_flash("Client Not Connected!");
         return;
     }
     snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
