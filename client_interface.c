@@ -66,7 +66,8 @@ void message_flash(char * message){
 
 }
 
-void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
+void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
+    if (client->connected)
     snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
     (*client_messages_count)++;
 }
@@ -78,7 +79,7 @@ void execute_command(command_t *command, client_t *client, char client_messages[
             connect_to_server(command->message, client);
             break;
         case SAY:
-            global_say(command->message, client_messages, client_messages_count);
+            global_say(command->message, client_messages, client_messages_count, client);
     }
 }
 
@@ -107,6 +108,7 @@ void command_handler(command_t *command, char * args[]){
 int main(int argc, char *argv[])
 {   
     client_t client;
+    client.setup()
 
     char messages[MAX_MSGS][MAX_LEN];
     int message_count = 0;

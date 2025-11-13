@@ -36,7 +36,11 @@ typedef struct {
 typedef struct {
     char name[NAME_SIZE];
     int port;
+    bool connected;
 
+    void setup(){
+        connected = false;
+    }
 } client_t;
 
 //Takes in a socket address and puts the ip and the port in the socket address in "The correct format", Returns 0 if success else -1
