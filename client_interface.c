@@ -47,11 +47,12 @@ void connect_to_server(char message[], client_t * client){
 }
 
 void message_flash(char * message){
-    clear_screen();
+    
     time_t start;
     start = time(NULL);
 
     time_t time_diff = time(NULL) - start;
+    clear_screen();
     while(time_diff < 3) {
         time_diff = time(NULL) - start;
         printf("Message: %s", message);
@@ -67,7 +68,10 @@ void message_flash(char * message){
 }
 
 void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
-    if (client->connected)
+    if (!client->connected){
+        message_flash("Client Not Connected");
+        return;
+    }
     snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
     (*client_messages_count)++;
 }
@@ -108,7 +112,7 @@ void command_handler(command_t *command, char * args[]){
 int main(int argc, char *argv[])
 {   
     client_t client;
-    setup_client(client); // only sets client connected to false at the moment
+    setup_client(&client); // only sets client connected to false at the moment
 
     char messages[MAX_MSGS][MAX_LEN];
     int message_count = 0;
@@ -116,7 +120,7 @@ int main(int argc, char *argv[])
     char input[MAX_LEN];
 
     while(1){
-        ///clear_screen();
+        clear_screen(); // comment this out for testing prints to console
         printf("Chat Messages\n\n");
 
         for (int i = 0; i < message_count; i++){

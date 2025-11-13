@@ -23,7 +23,7 @@ typedef enum {
     MUTE,
     UNMUTE,
     RENAME,
-    DISCONN,s
+    DISCONN,
     KICK
 } command_kind_t;
 
