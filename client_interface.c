@@ -42,7 +42,7 @@ void connect_to_server(char message[], client_t * client){
 
     strcpy(client->name, message);
     client->port = ntohs(responder_addr.sin_port);
-    printf("%s\n",(char *)client->port);
+    printf("%i\n",client->port);
 }
 
 void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
