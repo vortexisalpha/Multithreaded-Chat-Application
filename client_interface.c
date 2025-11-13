@@ -108,7 +108,7 @@ void command_handler(command_t *command, char * args[]){
 int main(int argc, char *argv[])
 {   
     client_t client;
-    client.setup()
+    setup_client(client); // only sets client connected to false at the moment
 
     char messages[MAX_MSGS][MAX_LEN];
     int message_count = 0;

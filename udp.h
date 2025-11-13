@@ -23,7 +23,7 @@ typedef enum {
     MUTE,
     UNMUTE,
     RENAME,
-    DISCONN,
+    DISCONN,s
     KICK
 } command_kind_t;
 
@@ -37,12 +37,11 @@ typedef struct {
     char name[NAME_SIZE];
     int port;
     bool connected;
-
-    void setup(){
-        connected = false;
-    }
 } client_t;
 
+void setup_client(client_t* client){
+    client->connected = false;
+}
 //Takes in a socket address and puts the ip and the port in the socket address in "The correct format", Returns 0 if success else -1
 int set_socket_addr(struct sockaddr_in *addr, const char *ip, int port)
 {
