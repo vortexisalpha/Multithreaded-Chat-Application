@@ -37,6 +37,9 @@ typedef struct {
     char name[NAME_SIZE];
     int port;
     bool connected;
+    struct sockaddr_in server_addr;
+    struct sockaddr_in responder_addr;
+
 } client_t;
 
 void setup_client(client_t* client){

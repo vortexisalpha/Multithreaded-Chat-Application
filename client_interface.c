@@ -43,6 +43,8 @@ void connect_to_server(char message[], client_t * client){
 
     strcpy(client->name, message);
     client->port = ntohs(responder_addr.sin_port);
+    client->server_addr = server_addr;
+    client->responder_addr = responder_addr;
     printf("%i\n",client->port);
 }
 
@@ -55,6 +57,11 @@ void message_flash(char * message){
         fflush(stdout);
         usleep(1000000);
     }
+}
+
+void send_signal(client_t * client){
+    //strcpy(client_request, "TESTCON");
+    //rc = udp_socket_write(sd, &server_addr, client_request, BUFFER_SIZE);
 }
 
 void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
