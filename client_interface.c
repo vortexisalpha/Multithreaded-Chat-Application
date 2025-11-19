@@ -1,7 +1,8 @@
 #include <stdio.h>
+#include <time.h>
 #include "udp.h"
 
-#define CLIENT_PORT 10000
+#define SAFETY_PORT 10000
 #define MAX_MSGS 100
 #define MAX_LEN 1024
 
@@ -24,21 +25,68 @@ void tokenise_input(char input[] ,char *args[]){
 }
 
 
-void connect_to_server(char message[], client_t client){}
+void connect_to_server(char message[], client_t * client){
+    // os has built in system to assign an unused port -> set udp_socket_open param to 0
 
-void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
+    int sd = udp_socket_open(0);
+    struct sockaddr_in server_addr, responder_addr;
+
+    int rc = set_socket_addr(&server_addr, "127.0.0.1", SERVER_PORT);
+    char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
+    strcpy(client_request, "TESTCON");
+    rc = udp_socket_write(sd, &server_addr, client_request, BUFFER_SIZE);
+   if (rc > 0)
+    {
+        int rc = udp_socket_read(sd, &responder_addr, server_response, BUFFER_SIZE);
+        printf("server_response: %s", server_response);
+    } 
+
+    strcpy(client->name, message);
+    client->port = ntohs(responder_addr.sin_port);
+    client->server_addr = server_addr;
+    client->responder_addr = responder_addr;
+    client->sd = sd;
+    printf("%i\n",client->port);
+}
+
+void message_flash(char * message){
+    clear_screen();
+    for (int i = 0; i < 4; i++){
+        printf("Message: %s\n", message);
+        usleep(1000000); // sleep 1 sec
+        clear_screen();
+        fflush(stdout);
+        usleep(1000000);
+    }
+}
+
+void send_signal(client_t * client, char * client_request){
+    int rc = udp_socket_write(client->sd, &client->server_addr, client_request, BUFFER_SIZE);
+    char * server_response;
+    if (rc > 0)
+    {
+        int rc = udp_socket_read(client->sd, &client->responder_addr, server_response, BUFFER_SIZE);
+        printf("server_response: %s", server_response);
+    } 
+}
+
+void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
+    if (!client->connected){
+        message_flash("Client Not Connected!");
+        return;
+    }
     snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
     (*client_messages_count)++;
 }
 
 
-void execute_command(command_t *command, client_t client, char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
+void execute_command(command_t *command, client_t *client, char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
     switch(command->kind){
         case CONN:
             connect_to_server(command->message, client);
             break;
         case SAY:
-            global_say(command->message, client_messages, client_messages_count);
+            global_say(command->message, client_messages, client_messages_count, client);
     }
 }
 
@@ -67,6 +115,7 @@ void command_handler(command_t *command, char * args[]){
 int main(int argc, char *argv[])
 {   
     client_t client;
+    setup_client(&client); // only sets client connected to false at the moment
 
     char messages[MAX_MSGS][MAX_LEN];
     int message_count = 0;
@@ -74,7 +123,7 @@ int main(int argc, char *argv[])
     char input[MAX_LEN];
 
     while(1){
-        clear_screen();
+        clear_screen(); // comment this out for testing prints to console
         printf("Chat Messages\n\n");
 
         for (int i = 0; i < message_count; i++){
@@ -98,7 +147,7 @@ int main(int argc, char *argv[])
 
             command_t command;
             command_handler(&command, args);
-            execute_command(&command, client, messages, &message_count);
+            execute_command(&command, &client, messages, &message_count);
 
 
           

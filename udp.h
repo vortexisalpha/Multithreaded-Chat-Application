@@ -8,6 +8,7 @@
 #include <unistd.h>     // close()
 #include <string.h>     // memset(), memcpy()
 #include <assert.h>
+#include <stdbool.h>
 
 #define BUFFER_SIZE 1024
 #define SERVER_PORT 12000
@@ -35,9 +36,19 @@ typedef struct {
 typedef struct {
     char name[NAME_SIZE];
     int port;
+    bool connected;
+
+    int sd;
+    struct sockaddr_in server_addr;
+    struct sockaddr_in responder_addr;
 
 } client_t;
 
+void setup_client(client_t* client){
+    client->connected = false;
+    client->port = 0;
+    client->sd = 0;
+}
 //Takes in a socket address and puts the ip and the port in the socket address in "The correct format", Returns 0 if success else -1
 int set_socket_addr(struct sockaddr_in *addr, const char *ip, int port)
 {
