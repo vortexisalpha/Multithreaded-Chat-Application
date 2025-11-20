@@ -5,8 +5,8 @@
 
 // make this void *
 
-void *listener(void *args){
-    listner_args_t* listner_args = (listner_args_t*)args;
+void *listener(void *arg){
+    listener_args_t* listener_args = (listener_args_t*)arg;
     //takes in the queue and adds the command into it,
     //queue is of form: [queue_node_t,...] each queue_node_t has msg and from addr
     while (1) 
@@ -20,10 +20,10 @@ void *listener(void *args){
         // Variable to store incoming client's IP address and port
         struct sockaddr_in client_address;
     
-        int rc = udp_socket_read(&listner_args->sd, &client_address, client_request, BUFFER_SIZE);
+        int rc = udp_socket_read(listener_args->sd, &client_address, client_request, BUFFER_SIZE);
 
         if (rc > 0){
-            q_append(listner_args->task_queue, client_request, client_address); // this includes queue full sleep for thread
+            q_append(listener_args->task_queue, client_request, client_address); // this includes queue full sleep for thread
         }
     }
 }
@@ -54,18 +54,19 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
     }
 }
 
-void *queue_manager(Queue * task_queue, int sd, client_node_t *head, client_node_t *tail){
+void *queue_manager(void* arg){
+    queue_manager_args_t* qm_args = (queue_manager_args_t *)arg;
+
     while(1){
         char * tokenised_command[MAX_COMMAND_LEN];
         struct sockaddr_in from_addr;
-        q_pop(task_queue, tokenised_command, &from_addr); // pop command from front of command queue (includes sleep wait for queue nonempty)
+        q_pop(qm_args->task_queue, tokenised_command, &from_addr); // pop command from front of command queue (includes sleep wait for queue nonempty)
 
         command_t cur_command;
         command_handler(&cur_command, tokenised_command); // fill out cur_command
 
-        spawn_execute_command_threads(sd, &cur_command, &from_addr, head, tail);
+        spawn_execute_command_threads(qm_args->sd, &cur_command, &from_addr, qm_args->head, qm_args->tail);
         
-        printf("Request served...\n");
     }
 }
 
@@ -92,16 +93,17 @@ int main(int argc, char *argv[])
     
     //spawn listner
     pthread_t listener_thread;
-    listener_args_t *listener_args;
+    listener_args_t *listener_args = malloc(sizeof(listener_args_t));
     setup_listener_args(listener_args, sd, &task_queue);
     pthread_create(&listener_thread, NULL, listener, listener_args);
-    pthread_detatch(listener_thread); //?
+    pthread_detach(listener_thread); //?
 
     //spawn queue manager thread
     pthread_t queue_manager_thread;
-    queue_manager_args_t *queue_manager_args;
+    queue_manager_args_t *queue_manager_args = malloc(sizeof(queue_manager_args_t));
     setup_queue_manager_args(queue_manager_args,&task_queue, sd, head, tail);
-
+    pthread_create(&queue_manager_thread, NULL, queue_manager, queue_manager_args);
+    pthread_detach(queue_manager_thread);
 
     return 0;
 }
