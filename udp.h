@@ -13,53 +13,7 @@
 #define BUFFER_SIZE 1024
 #define SERVER_PORT 12000
 #define NAME_SIZE 20
-#define MAX_CMD_SIZE 3
 
-//COMMANDS
-
-typedef enum {
-    CONN,
-    SAY,
-    SAYTO,
-    MUTE,
-    UNMUTE,
-    RENAME,
-    DISCONN,
-    KICK
-} command_kind_t;
-
-typedef struct {
-    command_kind_t kind;
-    char * args[];    
-} command_t;
-
-
-void command_handler(command_t *command, char * args[]){
-
-    if(strcmp(args[0], "conn") == 0){
-        command->kind = CONN;
-    } else if(strcmp(args[0], "say") == 0){
-        command->kind = SAY;
-    } else if(strcmp(args[0], "sayto") == 0){
-        command->kind = SAYTO;
-    } else if(strcmp(args[0], "mute") == 0){
-        command->kind = MUTE;
-    } else if(strcmp(args[0], "unmute") == 0){
-        command->kind = UNMUTE;
-    } else if(strcmp(args[0], "rename") == 0){
-        command->kind = RENAME;
-    } else if(strcmp(args[0], "disconn") == 0){
-        command->kind = DISCONN;
-    } else if(strcmp(args[0], "kick") == 0){
-        command->kind = KICK;
-    }
-    
-    int it = 0;
-    while (args[it] != NULL && args < MAX_CMD_SIZE ){
-        command->args[it] = args[it+1];
-        it++;
-    }
-}  
 
 //client
 typedef struct {

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "udp.h"
+#include "cmd.h"
 
 #define SAFETY_PORT 10000
 #define MAX_MSGS 100
