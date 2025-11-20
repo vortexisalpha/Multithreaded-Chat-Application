@@ -18,7 +18,6 @@ void add_client_to_list(client_node_t * tail, struct sockaddr_in *addr, char nam
     tail = tail->next;
 }
 
-
 void *listener(void *queue, int * sd, Queue * task_queue){
     //takes in the queue and adds the command into it in the form:
     //[]
@@ -41,18 +40,56 @@ void *listener(void *queue, int * sd, Queue * task_queue){
     }
 }
 
-void spawn_execute_command_threads(){
-    //make all threads neccesary for command to be executed and wait for them to be executed
+typedef struct {
+    int sd;
+    command_t* command;
+    struct sockaddr_in* from_addr;
+    client_node_t *head;
+    client_node_t *tail;
+} execute_command_args_t;
+
+setup_command_args(execute_command_args_t* args, int sd, command_t* command, struct sockaddr_in* from_addr,client_node_t *head, client_node_t *tail){
+    args->sd = sd;
+    args->command = command;
+    args->from_addr = from_addr;
+    args->head = head;
+    args->tail = tail;
 }
 
-void *queue_thread(Queue * task_queue){
+void *connect_to_server(void* arg){
+    execute_command_args_t* cmd_args = (execute_command_args_t*)arg; // cast to input type struct
+    char* name = cmd_args->command->args[0];
+    add_client_to_list(cmd_args->tail, cmd_args->from_addr, name);
+
+    char server_response[BUFFER_SIZE];
+    sprintf(server_response, "CONNECTED %s", name);
+    int rc = udp_socket_write(cmd_args->sd, &cmd_args->from_addr, server_response, BUFFER_SIZE);
+}
+
+
+void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_in* from_addr, client_node_t *head, client_node_t *tail){
+    //make all threads neccesary for command to be executed and wait for them to be executed
+    switch(command->kind){
+        case CONN:
+            pthread_t t;
+            execute_command_args_t *execute_args;
+            setup_command_args(execute_args,sd,command, from_addr, head, tail);
+            pthread_create(&t, NULL, connect_to_server, execute_args);
+            pthread_join(t, NULL); //?
+            break;
+    }
+}
+
+void *queue_thread(Queue * task_queue, int sd, client_node_t *head, client_node_t *tail){
     while(1){
         char * tokenised_command[MAX_COMMAND_LEN];
-        struct sockaddr_in client_address;
-        q_pop(task_queue, tokenised_command, &client_address); // pop command from front of command queue (includes sleep wait for queue nonempty)
-        
-        char server_response[BUFFER_SIZE];
-        spawn_execute_command_threads(tokenised_command, client_address);
+        struct sockaddr_in from_addr;
+        q_pop(task_queue, tokenised_command, &from_addr); // pop command from front of command queue (includes sleep wait for queue nonempty)
+
+        command_t cur_command;
+        command_handler(&cur_command, tokenised_command); // fill out cur_command
+
+        spawn_execute_command_threads(sd, &cur_command, &from_addr, head, tail);
         
         printf("Request served...\n");
     }
