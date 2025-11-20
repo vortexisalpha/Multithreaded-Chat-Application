@@ -5,13 +5,14 @@
 
 #define QUEUE_MAX 256
 #define QUEUE_MSG_SIZE 512
-#define MAX_COMMAND_LEN 4
+#define MAX_COMMAND_LEN 3
 
 
 typedef struct {
     char msg[QUEUE_MSG_SIZE];
     struct sockaddr_in from_addr;
 } queue_node_t;
+
 typedef struct {
     queue_node_t * data[QUEUE_MAX];
     int head;
@@ -35,7 +36,7 @@ void get_and_tokenise(Queue * q, int idx, char * args[]){
 
     char *token = strtok(q->data[idx]->msg, " "); 
     int argsc = 0; 
-    while (token != NULL && argsc < MAX_COMMAND_LEN) // max len command = sayto, from, to, msg = len 4
+    while (token != NULL && argsc < MAX_COMMAND_LEN) // max len command = sayto, to, msg = len 3
     {
         args[(argsc)++] = token;
         token = strtok(NULL, " ");
@@ -76,7 +77,7 @@ void q_pop(Queue * q, char * out[], struct sockaddr_in * sender){
     
     get_and_tokenise(q, q->head, out);
     *sender = q->data[q->head]->from_addr;
-    
+
     pthread_cond_signal(&q->nonfull);
     pthread_mutex_unlock(&q->lock);
 }

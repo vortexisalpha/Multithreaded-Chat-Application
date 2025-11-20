@@ -83,34 +83,14 @@ void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * c
 void execute_command(command_t *command, client_t *client, char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
     switch(command->kind){
         case CONN:
-            connect_to_server(command->message, client);
+            connect_to_server(command->args[0], client);
             break;
         case SAY:
-            global_say(command->message, client_messages, client_messages_count, client);
+            global_say(command->args[0], client_messages, client_messages_count, client);
     }
 }
 
-void command_handler(command_t *command, char * args[]){
 
-    if(strcmp(args[0], "conn") == 0){
-        command->kind = CONN;
-    } else if(strcmp(args[0], "say") == 0){
-        command->kind = SAY;
-    } else if(strcmp(args[0], "sayto") == 0){
-        command->kind = SAYTO;
-    } else if(strcmp(args[0], "mute") == 0){
-        command->kind = MUTE;
-    } else if(strcmp(args[0], "unmute") == 0){
-        command->kind = UNMUTE;
-    } else if(strcmp(args[0], "rename") == 0){
-        command->kind = RENAME;
-    } else if(strcmp(args[0], "disconn") == 0){
-        command->kind = DISCONN;
-    } else if(strcmp(args[0], "kick") == 0){
-        command->kind = KICK;
-    }
-    strcpy(command->message, args[1]);
-}   
 // client code
 int main(int argc, char *argv[])
 {   
