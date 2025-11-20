@@ -95,9 +95,12 @@ int main(int argc, char *argv[])
     listener_args_t *listener_args;
     setup_listener_args(listener_args, sd, &task_queue);
     pthread_create(&listener_thread, NULL, listener, listener_args);
-    //pthread_join(t, NULL); //?
+    pthread_detatch(listener_thread); //?
 
-    //spawn queue thread
+    //spawn queue manager thread
+    pthread_t queue_manager_thread;
+    queue_manager_args_t *queue_manager_args;
+    setup_queue_manager_args(queue_manager_args,&task_queue, sd, head, tail);
 
 
     return 0;

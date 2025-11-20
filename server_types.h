@@ -29,6 +29,22 @@ void setup_listener_args(listener_args_t* args, int sd, Queue* q){
     args->sd = sd;
     args->task_queue = q;
 }
+
+//queue manager thread argument struct
+typedef struct {
+    Queue * task_queue;
+    int sd;
+    client_node_t *head;
+    client_node_t *tail;
+} queue_manager_args_t;
+
+void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, client_node_t *head, client_node_t *tail){
+    args->task_queue = q;
+    args->sd = sd;
+    args->head = head;
+    args->tail = tail;
+}
+
 // linked list node struct
 
 typedef struct {
