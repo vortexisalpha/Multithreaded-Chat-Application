@@ -11,7 +11,7 @@ void clear_screen() {
     printf("\033[2J\033[H"); // Clear screen + move cursor to top-left
 }
 
-
+//idk if this works for generic cases
 void tokenise_input(char input[] ,char *args[]){
     char *token = strtok(input, "$");
     args[0] = token;
@@ -88,6 +88,8 @@ void execute_command(command_t *command, client_t *client, char client_messages[
             break;
         case SAY:
             global_say(command->args[0], client_messages, client_messages_count, client);
+        default:
+        
     }
 }
 

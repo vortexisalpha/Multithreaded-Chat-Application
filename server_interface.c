@@ -30,27 +30,30 @@ void *listener(void *arg){
 void *connect_to_server(void* args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     char* name = cmd_args->command->args[0];
-    add_client_to_list(cmd_args->tail, cmd_args->from_addr, name);
+    add_client_to_list(cmd_args->head, cmd_args->tail, cmd_args->from_addr, name);
 
     char server_response[BUFFER_SIZE];
     sprintf(server_response, "CONNECTED %s", name);
-    int rc = udp_socket_write(cmd_args->sd, &cmd_args->from_addr, server_response, BUFFER_SIZE);
+    int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, strlen(server_response) + 1);
     printf("Request served...\n");
-    
+
     free(args);
     return NULL;
 }
 
 
-void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_in* from_addr, client_node_t *head, client_node_t *tail){
+void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_in* from_addr, client_node_t **head, client_node_t **tail){
     //make all threads neccesary for command to be executed and wait for them to be executed
     switch(command->kind){
-        case CONN:
+        case CONN:{
             pthread_t t;
             execute_command_args_t *execute_args = malloc(sizeof(execute_command_args_t));
             setup_command_args(execute_args,sd,command, from_addr, head, tail);
             pthread_create(&t, NULL, connect_to_server, execute_args);
             pthread_join(t, NULL); //?
+            break;
+        }
+        default:
             break;
     }
 }
@@ -73,7 +76,7 @@ void *queue_manager(void* arg){
 
 void setup(int* sd, Queue * q){
     *sd = udp_socket_open(SERVER_PORT);
-    assert(sd > -1);
+    assert(*sd > -1);
 
     queue_init(q);
 }
@@ -102,9 +105,11 @@ int main(int argc, char *argv[])
     //spawn queue manager thread
     pthread_t queue_manager_thread;
     queue_manager_args_t *queue_manager_args = malloc(sizeof(queue_manager_args_t));
-    setup_queue_manager_args(queue_manager_args,&task_queue, sd, head, tail);
+    setup_queue_manager_args(queue_manager_args,&task_queue, sd, &head, &tail);
     pthread_create(&queue_manager_thread, NULL, queue_manager, queue_manager_args);
     pthread_detach(queue_manager_thread);
 
+
+    pthread_exit(NULL); // exit main thread but keep other bg threads
     return 0;
 }
