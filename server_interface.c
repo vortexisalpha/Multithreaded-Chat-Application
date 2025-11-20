@@ -9,13 +9,11 @@ void *listener(void *arg){
     listener_args_t* listener_args = (listener_args_t*)arg;
     //takes in the queue and adds the command into it,
     //queue is of form: [queue_node_t,...] each queue_node_t has msg and from addr
+    printf("Server is listening on port %d\n", SERVER_PORT);
     while (1) 
     {
         // Storage for request and response messages
         char client_request[BUFFER_SIZE];
-
-        // Demo code (remove later)
-        printf("Server is listening on port %d\n", SERVER_PORT);
 
         // Variable to store incoming client's IP address and port
         struct sockaddr_in client_address;
@@ -38,6 +36,9 @@ void *connect_to_server(void* args){
     sprintf(server_response, "CONNECTED %s", name);
     int rc = udp_socket_write(cmd_args->sd, &cmd_args->from_addr, server_response, BUFFER_SIZE);
     printf("Request served...\n");
+    
+    free(args);
+    return NULL;
 }
 
 
@@ -46,7 +47,7 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
     switch(command->kind){
         case CONN:
             pthread_t t;
-            execute_command_args_t *execute_args;
+            execute_command_args_t *execute_args = malloc(sizeof(execute_command_args_t));
             setup_command_args(execute_args,sd,command, from_addr, head, tail);
             pthread_create(&t, NULL, connect_to_server, execute_args);
             pthread_join(t, NULL); //?
@@ -86,10 +87,10 @@ int main(int argc, char *argv[])
     // and port number SERVER_PORT
     // (See details of the function in udp.h)
     int sd;
-    client_node_t *head;
-    client_node_t *tail = head;
+    client_node_t *head = NULL;
+    client_node_t *tail = NULL;
     Queue task_queue;
-    setup(sd, &task_queue);
+    setup(&sd, &task_queue);
     
     //spawn listner
     pthread_t listener_thread;
