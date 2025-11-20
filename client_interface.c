@@ -71,10 +71,10 @@ void send_signal(client_t * client, char * client_request){
 }
 
 void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
-    if (!client->connected){
+    /*if (!client->connected){
         message_flash("Client Not Connected!");
         return;
-    }
+    }*/
     snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
     (*client_messages_count)++;
 }
@@ -139,18 +139,14 @@ int main(int argc, char *argv[])
         input[strcspn(input, "\n")] = 0; // remove \n when enter is pressed
         char *args[2];
     
-
         if (strcmp(input, ":q") == 0) break;
 
         if (message_count < MAX_MSGS){
-            tokenise_input(input, args);//error check input later
+            tokenise_input(input, args);//error check inpuct later
 
             command_t command;
             command_handler(&command, args);
             execute_command(&command, &client, messages, &message_count);
-
-
-          
         }
 
 
