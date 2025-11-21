@@ -1,4 +1,3 @@
-
 // libraries needed for various functions
 // use man page for details
 #include <sys/types.h>  // data types like size_t, socklen_t
@@ -10,27 +9,11 @@
 #include <assert.h>
 #include <stdbool.h>
 
+
 #define BUFFER_SIZE 1024
 #define SERVER_PORT 12000
 #define NAME_SIZE 20
 
-//COMMANDS
-
-typedef enum {
-    CONN,
-    SAY,
-    SAYTO,
-    MUTE,
-    UNMUTE,
-    RENAME,
-    DISCONN,
-    KICK
-} command_kind_t;
-
-typedef struct {
-    command_kind_t kind;
-    char message[BUFFER_SIZE];    
-} command_t;
 
 //client
 typedef struct {
@@ -44,11 +27,13 @@ typedef struct {
 
 } client_t;
 
+
 void setup_client(client_t* client){
     client->connected = false;
     client->port = 0;
     client->sd = 0;
 }
+
 //Takes in a socket address and puts the ip and the port in the socket address in "The correct format", Returns 0 if success else -1
 int set_socket_addr(struct sockaddr_in *addr, const char *ip, int port)
 {

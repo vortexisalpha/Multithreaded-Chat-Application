@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "udp.h"
+#include "cmd.h"
 
 #define SAFETY_PORT 10000
 #define MAX_MSGS 100
@@ -10,7 +11,7 @@ void clear_screen() {
     printf("\033[2J\033[H"); // Clear screen + move cursor to top-left
 }
 
-
+//idk if this works for generic cases
 void tokenise_input(char input[] ,char *args[]){
     char *token = strtok(input, "$");
     args[0] = token;
@@ -71,10 +72,10 @@ void send_signal(client_t * client, char * client_request){
 }
 
 void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
-    if (!client->connected){
+    /*if (!client->connected){
         message_flash("Client Not Connected!");
         return;
-    }
+    }*/
     snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
     (*client_messages_count)++;
 }
@@ -83,34 +84,16 @@ void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * c
 void execute_command(command_t *command, client_t *client, char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
     switch(command->kind){
         case CONN:
-            connect_to_server(command->message, client);
+            connect_to_server(command->args[0], client);
             break;
         case SAY:
-            global_say(command->message, client_messages, client_messages_count, client);
+            global_say(command->args[0], client_messages, client_messages_count, client);
+        default:
+        
     }
 }
 
-void command_handler(command_t *command, char * args[]){
 
-    if(strcmp(args[0], "conn") == 0){
-        command->kind = CONN;
-    } else if(strcmp(args[0], "say") == 0){
-        command->kind = SAY;
-    } else if(strcmp(args[0], "sayto") == 0){
-        command->kind = SAYTO;
-    } else if(strcmp(args[0], "mute") == 0){
-        command->kind = MUTE;
-    } else if(strcmp(args[0], "unmute") == 0){
-        command->kind = UNMUTE;
-    } else if(strcmp(args[0], "rename") == 0){
-        command->kind = RENAME;
-    } else if(strcmp(args[0], "disconn") == 0){
-        command->kind = DISCONN;
-    } else if(strcmp(args[0], "kick") == 0){
-        command->kind = KICK;
-    }
-    strcpy(command->message, args[1]);
-}   
 // client code
 int main(int argc, char *argv[])
 {   
@@ -139,18 +122,14 @@ int main(int argc, char *argv[])
         input[strcspn(input, "\n")] = 0; // remove \n when enter is pressed
         char *args[2];
     
-
         if (strcmp(input, ":q") == 0) break;
 
         if (message_count < MAX_MSGS){
-            tokenise_input(input, args);//error check input later
+            tokenise_input(input, args);//error check inpuct later
 
             command_t command;
             command_handler(&command, args);
             execute_command(&command, &client, messages, &message_count);
-
-
-          
         }
 
 

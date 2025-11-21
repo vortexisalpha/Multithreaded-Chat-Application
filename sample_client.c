@@ -10,6 +10,8 @@ int main(int argc, char *argv[])
     // binding it to all IP interfaces of this machine,
     // and port number CLIENT_PORT.
     // (See details of the function in udp.h)
+    printf("opening socket... \n");
+
     int sd = udp_socket_open(0);
 
     // Variable to store the server's IP address and port
@@ -25,19 +27,21 @@ int main(int argc, char *argv[])
     // You can change this to a different IP address
     // when running the server on a different machine.
     // (See details of the function in udp.h)
+    printf("setting up port... \n");
     int rc = set_socket_addr(&server_addr, "127.0.0.1", SERVER_PORT);
 
     // Storage for request and response messages
     char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
 
     // Demo code (remove later)
-    strcpy(client_request, "Dummy Request");
+    strcpy(client_request, "conn Alice");
 
     // This function writes to the server (sends request)
     // through the socket at sd.
     // (See details of the function in udp.h)
+    printf("sending...\n");
     rc = udp_socket_write(sd, &server_addr, client_request, BUFFER_SIZE);
-
+    printf("sent: %s\n", client_request);
     if (rc > 0)
     {
         // This function reads the response from the server
@@ -45,10 +49,11 @@ int main(int argc, char *argv[])
         // In our case, responder_addr will simply be
         // the same as server_addr.
         // (See details of the function in udp.h)
+        printf("reading...\n");
         int rc = udp_socket_read(sd, &responder_addr, server_response, BUFFER_SIZE);
 
         // Demo code (remove later)
-        printf("server_response: %s", server_response);
+        printf("server_response: %s\n", server_response);
     }
 
     return 0;

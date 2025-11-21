@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 
     assert(sd > -1);
 
-    // Server main loopw
+    // Server main loop
     while (1) 
     {
         // Storage for request and response messages
