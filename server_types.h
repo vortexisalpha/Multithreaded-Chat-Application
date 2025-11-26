@@ -32,7 +32,7 @@ void add_client_to_list(client_node_t **head,client_node_t **tail, struct sockad
 }
 
 
-void remove_client_from_list(client_node_t **head, char name[NAME_SIZE]){
+void remove_client_from_list(client_node_t *head, char name[NAME_SIZE]){
     client_node_t *iter = head; 
     client_node_t *last_node; 
     while(iter != NULL){

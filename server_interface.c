@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "server_types.h"
@@ -45,8 +44,8 @@ void *say(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     char* who = cmd_args->command->args[0]; 
     char* message = cmd_args->command->args[1]; 
-    client_node_t *iter = cmd_args->head; 
-    client_node_t *check = cmd_args->tail; 
+    client_node_t **iter = cmd_args->head; 
+    client_node_t **check = cmd_args->tail; 
     while((iter!=check)&&(iter!=NULL)){
         char* send_message[MAX_MESSAGE]; 
         strncat(send_message, who, sizeof(send_message) - strlen(send_message)-1); 
@@ -81,7 +80,7 @@ void *sayto(void *args){
 void *disconnect(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     char* name = cmd_args->command->args[0]; 
-    remove_client_from_list(cmd_args->head, name); 
+    remove_client_from_list(*cmd_args->head, name); 
 }
 
 void *mute(void *args){
@@ -104,9 +103,6 @@ void *rename(void *args){
     }
 }
 
-void *wingwingarrow(void *args) {
-    return
-}
 
 void *kick(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct

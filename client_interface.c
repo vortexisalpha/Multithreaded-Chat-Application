@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
-#include "udp.h"
 #include "cmd.h"
 
 #define SAFETY_PORT 10000
@@ -38,7 +37,7 @@ void connect_to_server(char message[], client_t * client){
     char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
     strcpy(client_request, "TESTCON");
     rc = udp_socket_write(sd, &server_addr, client_request, BUFFER_SIZE);
-   if (rc > 0)
+    if (rc > 0)
     {
         int rc = udp_socket_read(sd, &responder_addr, server_response, BUFFER_SIZE);
         printf("server_response: %s", server_response);
@@ -82,7 +81,7 @@ void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * c
         return;
     }*/
    
-    snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
+    // snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
     (*client_messages_count)++;
 }
 
@@ -115,8 +114,9 @@ void rename(char name[], char client_messages[MAX_MSGS][MAX_LEN], int * client_m
 }
 */ 
 
-int disconnect(){
-    print("You have disconnected\n"); 
+bool disconnect(){
+    printf("You have disconnected\n"); 
+    return true; 
 }
 
 
@@ -150,7 +150,7 @@ void execute_command(command_t *command, client_t *client, char client_messages[
             printf("You have requested to rename to %s\n", command->args[0]);  
             break; 
         case DISCONN:
-            int rc = disconnect(); 
+            disconnect(); 
 
         default:
             printf("Error, command type is undefined\n"); 
@@ -158,7 +158,7 @@ void execute_command(command_t *command, client_t *client, char client_messages[
     }
     if((command->kind != CONN) && (command->kind != DISCONN)){
         char send_message[MAX_LEN];
-        strncat(send_message, (char) command->kind, sizeof(send_message)-strlen(send_message)-1); 
+        strncat(send_message, (char*) command->kind, sizeof(send_message)-strlen(send_message)-1); 
         strncat(send_message, " ", sizeof(send_message)-strlen(send_message)-1); 
         for(int i=0; i<argsc; i++){
             /*
@@ -181,11 +181,17 @@ void execute_command(command_t *command, client_t *client, char client_messages[
 
 // consider the client mode required thread
 // listener thread and send thread
-void *listener(void*){
 
+void *listener(void* args){
+    while(1){
+
+    }
 }
 
-void *sender(void*){
+void *sender(void* args){
+    while(1){
+        
+    }
 
 }
 
