@@ -143,7 +143,7 @@ void *chat_display_thread(void *arg){
     }
 
 }
-
+/*
 void join_with_spaces(char *tokenised_command[MAX_COMMAND_LEN], char *joint_msg) {
     joint_msg[0] = '\0';
 
@@ -155,7 +155,12 @@ void join_with_spaces(char *tokenised_command[MAX_COMMAND_LEN], char *joint_msg)
             strcat(joint_msg, " ");
     }
 }
-void *queue_manager(void* arg){
+*/
+void execute_server_command(comand_t cmd){
+    
+}
+
+void *cli_queue_manager(void* arg){
     cli_queue_manager_args_t* qm_args = (cli_queue_manager_args_t *)arg;
     
     client_t * client = qm_args->client;
@@ -164,9 +169,10 @@ void *queue_manager(void* arg){
 
         q_pop(qm_args->task_queue, tokenised_command, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
 
-        char * server_request;
-        join_with_spaces(tokenised_command, server_request)
-        spawn_execute_command_threads(client->sd, &cur_command);  
+        char client_request[BUFFER_SIZE];
+        command_t cmd;
+        command_handler(&cmd, tokenised_command); // fill out cur_command
+        execute_server_command(cmd);
     }
 }
 
@@ -187,35 +193,19 @@ int main(int argc, char *argv[])
 
     char input[MAX_LEN];
 
-    while(1){
-        clear_screen(); // comment this out for testing prints to console
-        printf("Chat Messages\n\n");
+    //spawn listner
+    pthread_t listener_thread;
+    listener_args_t *cli_listener_args = malloc(sizeof(listener_args_t));
+    setup_listener_args(listener_args, sd, &task_queue);
+    pthread_create(&listener_thread, NULL, listener, listener_args);
+    pthread_detach(listener_thread); //?
 
-        for (int i = 0; i < message_count; i++){
-            printf("%s\n", messages[i]);
-        }
+    //spawn queue manager thread
+    pthread_t queue_manager_thread;
+    queue_manager_args_t *cli_queue_manager_args = malloc(sizeof(queue_manager_args_t));
+    setup_queue_manager_args(queue_manager_args,&task_queue, sd, &head, &tail);
+    pthread_create(&queue_manager_thread, NULL, queue_manager, queue_manager_args);
+    pthread_detach(queue_manager_thread);
 
-        printf("-----------------------------------\n");
-
-
-        //sender thread stuff
-        printf("> ");
-        fgets(input, sizeof(input), stdin);
-        input[strcspn(input, "\n")] = 0; // remove \n when enter is pressed
-        char *args[2];
-    
-        if (strcmp(input, ":q") == 0) break;
-
-        if (message_count < MAX_MSGS){
-            tokenise_input(input, args);//error check inpuct later
-
-            command_t command;
-            command_handler(&command, args);
-            execute_command(&command, &client, messages, &message_count);
-        }
-
-
-        //listner thread stuff
-    }
     return 0;
 }
