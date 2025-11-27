@@ -114,6 +114,35 @@ void *cli_listener(void *arg){
     }
 }
 
+//chat display args need message buffer, message_count pointer, client_t ptr
+//sleeps on no input
+void *chat_display_thread(void *arg){
+    chat_display_args_t* chat_display_args = (chat_display_args_t*)arg;
+
+    while(1){
+        clear_screen(); // comment this out for testing prints to console
+        printf("Chat Messages\n\n");
+
+        for (int i = 0; i < *chat_display_args->message_count; i++){
+            printf("%s\n", messages[i]);
+        }
+
+        printf("-----------------------------------\n");
+
+        printf("> ");
+        //if pthread_cond_signal does not say that we must update the message display{:
+        // wait for input:
+        fgets(input, sizeof(input), stdin);
+
+        input[strcspn(input, "\n")] = 0; // remove \n when enter is pressed
+        client_t * client = chat_display_args->client;
+        int rc = udp_socket_write(client->sd, &client->server_addr, &input[0], BUFFER_SIZE);
+    
+        if (strcmp(input, ":q") == 0) break; // replace this with end_all_threads() function
+    }
+
+}
+
 
 
 
