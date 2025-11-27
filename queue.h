@@ -33,8 +33,15 @@ void queue_init(Queue *q){
     pthread_cond_init(&q->nonfull, NULL);
 }
 
-void get_and_tokenise(queue_node_t *node, char * args[]){
+void remove_dollar_sign(char* str){
+    char* p = strchr(str, '$');
+    if (!p) return;
     
+    memove(p,p+1,strlen(p));
+}
+
+void get_and_tokenise(queue_node_t *node, char * args[]){
+    remove_dollar_sign(node->msg);
     char *token = strtok(node->msg, " "); 
     int argsc = 0; 
     while (token != NULL && argsc < MAX_COMMAND_LEN) // max len command = sayto, to, msg = len 3
