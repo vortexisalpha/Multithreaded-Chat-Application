@@ -34,19 +34,41 @@ void connect_command(client_t* client, char name[NAME_SIZE]){
 
 //thread args:
 
+//lister thread
 typedef struct {
     client_t * client;
     Queue * task_queue;
 } cli_listener_args_t;
 
+void setup_cli_lister_args(listener_args_t* args, client_t * client, Queue * task_queue){
+    args->client = client;
+    args->task_queue = task_queue;
+}
 
+//chat display thread
 typedef struct{ 
     client_t * client;
-    messages[MAX_MSGS][MAX_LEN];
+    char messages[MAX_MSGS][MAX_LEN];
     int * message_count;
 } chat_display_args_t;
 
+void setup_chat_display_args(chat_display_args_t * args, client_t * client, char messages[MAX_MSGS][MAX_LEN], int * message_count){
+    args->client = client;
+    args->messages = messages;
+    args->message_count = message_count;
+}
+
+//queue manager thread
 typedef struct {
     client_t * client;
     Queue * task_queue;
 } cli_queue_manager_args_t;
+
+void setup_cli_queue_manager_args(cli_queue_manager_args_t * args, client_t * client, Queue * task_queue){
+    args->client = client;
+    args->task_queue = task_queue;
+}
+
+//commands:
+
+

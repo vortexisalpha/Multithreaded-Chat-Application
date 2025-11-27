@@ -265,20 +265,24 @@ int main(int argc, char *argv[])
     int message_count = 0;
 
     char input[MAX_LEN];
+    //***   needs to do     ***/
 
-    //spawn listner
-    pthread_t listener_thread;
-    listener_args_t *cli_listener_args = malloc(sizeof(listener_args_t));
-    setup_listener_args(listener_args, sd, &task_queue);
-    pthread_create(&listener_thread, NULL, listener, listener_args);
-    pthread_detach(listener_thread); //?
+    //spawn chat display thread
+    pthread_t chat_display_thread;
+    
+    //spawn listner thread
+    pthread_t cli_listener_thread;
+    cli_listener_args_t *cli_listener_args = malloc(sizeof(cli_listener_args_t));
+    setup_listener_args(cli_listener_args, sd, &task_queue);
+    pthread_create(&cli_listener_thread, NULL, cli_listener, cli_listener_args);
+    pthread_detach(cli_listener_thread); 
 
     //spawn queue manager thread
-    pthread_t queue_manager_thread;
-    queue_manager_args_t *cli_queue_manager_args = malloc(sizeof(queue_manager_args_t));
-    setup_queue_manager_args(queue_manager_args,&task_queue, sd, &head, &tail);
-    pthread_create(&queue_manager_thread, NULL, queue_manager, queue_manager_args);
-    pthread_detach(queue_manager_thread);
+    pthread_t cli_queue_manager_thread;
+    cli_queue_manager_args_t *cli_queue_manager_args = malloc(sizeof(cli_queue_manager_args_t));
+    setup_queue_manager_args(cli_queue_manager_args,&task_queue, sd, &head, &tail);
+    pthread_create(&cli_queue_manager_thread, NULL, cli_queue_manager, cli_queue_manager_args);
+    pthread_detach(cli_queue_manager_thread);
 
     return 0;
 }
