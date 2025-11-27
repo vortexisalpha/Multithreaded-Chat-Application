@@ -1,5 +1,8 @@
 #include "cmd.h" // includes udp.h
 #include "queue.h"
+#define MAX_MUTED 100
+#define MAX_HISTORY 20 
+#define MAX_LEN  256
 
 // linked list node struct
 
@@ -26,6 +29,27 @@ void add_client_to_list(client_node_t **head,client_node_t **tail, struct sockad
         *tail = (*tail)->next;
     }
     
+}
+
+
+void remove_client_from_list(client_node_t *head, char name[NAME_SIZE]){
+    client_node_t *iter = head; 
+    client_node_t *last_node; 
+    while(iter != NULL){
+        if(strcmp(iter->client_name, name) == 0){
+            printf("Remove client: %s\n", name);
+            last_node->next = iter->next; 
+            free(iter); 
+            break;
+        }
+        last_node = iter; 
+        iter = iter->next;
+    }   
+
+    if(iter == NULL){
+        printf("Error. Client is not found in linked list\n");
+    }
+
 }
 
 // command thread argument struct
@@ -71,5 +95,19 @@ void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, clie
     args->tail = tail;
 }
 
+// muted chat buffer, local to each user
+// initialise using new
+typedef struct {
+    char messages[MAX_MUTED][MAX_LEN];
+    int count;
+} muted_buffer_t;
 
-void remove_client_from_list(){}
+// we need a chat history (slightly different from a queue) for (1) proposed extension (2) muted chat perservance
+// this is a global struct (which I am not sure if the data structure is optimal)?
+typedef struct {
+    char messages[MAX_HISTORY][MAX_LEN];
+    int count;
+    pthread_mutex_t mutex;
+} chat_history_t;
+
+chat_history_t history;

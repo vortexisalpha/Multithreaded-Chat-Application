@@ -86,4 +86,3 @@ void q_pop(Queue * q, char * out[], struct sockaddr_in * sender){
     pthread_cond_signal(&q->nonfull);
     pthread_mutex_unlock(&q->lock);
 }
-

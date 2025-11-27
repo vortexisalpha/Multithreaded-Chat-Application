@@ -9,13 +9,10 @@
 #include <assert.h>
 #include <stdbool.h>
 
-
 #define BUFFER_SIZE 1024
 #define SERVER_PORT 12000
 #define NAME_SIZE 20
 
-
-//client
 typedef struct {
     char name[NAME_SIZE];
     int port;
