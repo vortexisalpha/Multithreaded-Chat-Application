@@ -38,3 +38,10 @@ typedef struct {
     client_t * client;
     Queue * task_queue;
 } cli_listener_args_t;
+
+
+typedef struct{ 
+    client_t * client;
+    messages[MAX_MSGS][MAX_LEN];
+    int * message_count;
+} chat_display_args_t;
