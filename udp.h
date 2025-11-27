@@ -1,4 +1,3 @@
-
 // libraries needed for various functions
 // use man page for details
 #include <sys/types.h>  // data types like size_t, socklen_t
@@ -32,6 +31,7 @@ void setup_client(client_t* client){
     client->sd = 0;
 }
 
+//Takes in a socket address and puts the ip and the port in the socket address in "The correct format", Returns 0 if success else -1
 int set_socket_addr(struct sockaddr_in *addr, const char *ip, int port)
 {
     // This is a helper function that fills
@@ -60,6 +60,7 @@ int set_socket_addr(struct sockaddr_in *addr, const char *ip, int port)
     return 0;
 }
 
+//makes a new socket and binds to NULL IP (0.0.0.0), Returns socket descriptor.
 int udp_socket_open(int port)
 {
 
@@ -86,6 +87,7 @@ int udp_socket_open(int port)
     return sd; // return the socket descriptor
 }
 
+//sleep thread and await response of max n bytes and put into buffer. Returns number of bytes recieved in the buffer else -1 for error/ 0 for closed connection
 int udp_socket_read(int sd, struct sockaddr_in *addr, char *buffer, int n)
 {
     // Receive up to n bytes into buffer from the socket with descriptor sd.
@@ -102,6 +104,7 @@ int udp_socket_read(int sd, struct sockaddr_in *addr, char *buffer, int n)
     return recvfrom(sd, buffer, n, 0, (struct sockaddr *)addr, &len);
 }
 
+//sleep thread and await sending of a message inside buffer of size n bytes to an address over a socket (sd), Returns n bytes sent else -1 for error/ 0 for closed connection.
 int udp_socket_write(int sd, struct sockaddr_in *addr, char *buffer, int n)
 {
     // Send the contents of buffer (n bytes) to the given destination
