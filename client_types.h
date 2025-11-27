@@ -2,7 +2,6 @@
 #include "queue.h"
 
 //client
-//i dont think we need a port
 typedef struct {
     char name[NAME_SIZE];
     bool connected;
@@ -15,14 +14,22 @@ typedef struct {
 
 
 void setup_client(client_t* client){
+    client->sd = 0;
+    client->connected = false;
+}
+
+void connect_command(client_t* client, char name[NAME_SIZE]){
     printf("opening socket... \n");
-
-    client->connected = true;
     client->sd = udp_socket_open(0);;
-
-    printf("setting up port... \n");
+    
+    printf("Setting up port... \n");
     int rc = set_socket_addr(&client->server_addr, "127.0.0.1", SERVER_PORT);
-    if (rc <= 0) printf("Client failed to connect to server");
+    if (rc <= 0) {
+        printf("Client failed to connect to server");
+        return;
+    }
+    client->name = name;
+    client->connected = true;
 }
 
 //thread args:
