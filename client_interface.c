@@ -229,19 +229,7 @@ void *chat_display_thread(void *arg){
     }
 
 }
-/*
-void join_with_spaces(char *tokenised_command[MAX_COMMAND_LEN], char *joint_msg) {
-    joint_msg[0] = '\0';
 
-    for (int i = 0; tokenised_command[i] != NULL; i++) {
-        strcat(joint_msg, tokenised_command[i]);
-
-        //add space between words except last
-        if (tokenised_command[i+1] != NULL)
-            strcat(joint_msg, " ");
-    }
-}
-*/
 void execute_server_command(comand_t cmd){
     
 }
@@ -255,7 +243,6 @@ void *cli_queue_manager(void* arg){
 
         q_pop(qm_args->task_queue, tokenised_command, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
 
-        char client_request[BUFFER_SIZE];
         command_t cmd;
         command_handler(&cmd, tokenised_command); // fill out cur_command
         execute_server_command(cmd);
