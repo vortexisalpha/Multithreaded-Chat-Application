@@ -37,7 +37,7 @@ void remove_dollar_sign(char* str){
     char* p = strchr(str, '$');
     if (!p) return;
     
-    memove(p,p+1,strlen(p));
+    memmove(p,p+1,strlen(p));
 }
 
 void get_and_tokenise(queue_node_t *node, char * args[]){
