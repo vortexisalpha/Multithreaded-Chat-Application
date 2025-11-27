@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "udp.h"
+#include "client_types.h"
 #include "cmd.h"
 
 #define SAFETY_PORT 10000
@@ -94,10 +95,34 @@ void execute_command(command_t *command, client_t *client, char client_messages[
 }
 
 
+//reads socket and appends to queue
+void *cli_listener(void *arg){
+    cli_listener_args_t* listener_args = (listener_args_t*)arg;
+    //takes in the queue and adds the server response command to it,
+    //queue is of form: [queue_node_t,...] each queue_node_t has msg and from addr
+    printf("Client is listening on server port: %d\n", SERVER_PORT);
+    while (1) {
+        // Storage for response from server
+        char server_response[BUFFER_SIZE];
+        client_t * = lister_args->client;
+
+        int rc = udp_socket_read(client_ptr->sd, &client_ptr->responder_addr, server_response, BUFFER_SIZE);
+
+        if (rc > 0){
+            q_append(listener_args->task_queue, server_response, NULL); // this includes queue full sleep for thread
+        }
+    }
+}
+
+
+
+
 // client code
 int main(int argc, char *argv[])
-{   
+{      
+    //setup code:
     client_t client;
+    Queue task_queue;
     setup_client(&client); // only sets client connected to false at the moment
 
     char messages[MAX_MSGS][MAX_LEN];
