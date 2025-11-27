@@ -1,29 +1,52 @@
-#define MAX_NAME 30
-#define MAX_MESSAGE 256
-#define MAX_SIZE 100
-#define MAX_ACTIVITY 1000
-#define MAX_ACTIVITY_LOG 1024
+#include "udp.h"
+#include "queue.h"
 
-typedef struct{
-    char name[MAX_NAME]; // from who
-    bool private_msg; // is this a private message (show line: only delivered to Bob or sth equivalent)
-    char message[MAX_MESSAGE]; 
-    int rear;
-    int front; 
-    int size; 
-} message_Queue; // only concerns to the receiver thread of client side. 
+//client
+typedef struct {
+    char name[NAME_SIZE];
+    bool connected;
+
+    int sd;
+    struct sockaddr_in server_addr;
+    struct sockaddr_in responder_addr;
+
+} client_t;
 
 
-void queue_init(message_Queue *q){
-    q->front = -1;
-    q->rear = 0;
-    q->size = 0;
+void setup_client(client_t* client){
+    client->sd = 0;
+    client->connected = false;
 }
 
-bool isEmpty(message_Queue* q) { return (q->front == q->rear - 1); }
+void connect_command(client_t* client, char name[NAME_SIZE]){
+    printf("opening socket... \n");
+    client->sd = udp_socket_open(0);;
+    
+    printf("Setting up port... \n");
+    int rc = set_socket_addr(&client->server_addr, "127.0.0.1", SERVER_PORT);
+    if (rc <= 0) {
+        printf("Client failed to connect to server");
+        return;
+    }
+    client->name = name;
+    client->connected = true;
+}
 
-bool isFull(message_Queue* q) { return (q->rear == MAX_SIZE); }
+//thread args:
+
+typedef struct {
+    client_t * client;
+    Queue * task_queue;
+} cli_listener_args_t;
 
 
-char activity_history[MAX_ACTIVITY][MAX_ACTIVITY_LOG]; 
+typedef struct{ 
+    client_t * client;
+    messages[MAX_MSGS][MAX_LEN];
+    int * message_count;
+} chat_display_args_t;
 
+typedef struct {
+    client_t * client;
+    Queue * task_queue;
+} cli_queue_manager_args_t;

@@ -4,6 +4,10 @@
 #define MAX_HISTORY 20 
 #define MAX_LEN  256
 
+#define BUFFER_SIZE 1024
+#define SERVER_PORT 12000
+#define NAME_SIZE 20
+
 // linked list node struct
 
 typedef struct client_node{

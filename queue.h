@@ -7,10 +7,11 @@
 #define QUEUE_MSG_SIZE 512
 #define MAX_COMMAND_LEN 3
 
-
+//added has_addr so that it works for client side and server side queues. Clients dont need from_addr
 typedef struct {
     char msg[QUEUE_MSG_SIZE];
     struct sockaddr_in from_addr;
+    int has_addr;
 } queue_node_t;
 
 typedef struct {
@@ -30,11 +31,17 @@ void queue_init(Queue *q){
     pthread_mutex_init(&q->lock, NULL);
     pthread_cond_init(&q->nonempty, NULL);
     pthread_cond_init(&q->nonfull, NULL);
+}
 
+void remove_dollar_sign(char* str){
+    char* p = strchr(str, '$');
+    if (!p) return;
+    
+    memove(p,p+1,strlen(p));
 }
 
 void get_and_tokenise(queue_node_t *node, char * args[]){
-    
+    remove_dollar_sign(node->msg);
     char *token = strtok(node->msg, " "); 
     int argsc = 0; 
     while (token != NULL && argsc < MAX_COMMAND_LEN) // max len command = sayto, to, msg = len 3
@@ -48,7 +55,7 @@ void get_and_tokenise(queue_node_t *node, char * args[]){
 }
 
 //add to the thread and give nonempty signal under mutex
-void q_append(Queue* q, char* msg, struct sockaddr_in from_addr){
+void q_append(Queue* q, char* msg, struct sockaddr_in* from_addr){
     
     pthread_mutex_lock(&q->lock);
     while ((q->tail + 1) % QUEUE_MAX == q->head) { // queue full
@@ -56,9 +63,15 @@ void q_append(Queue* q, char* msg, struct sockaddr_in from_addr){
     }   
     
     queue_node_t *node = &q->data[q->tail];
-
     strncpy(node->msg, msg, QUEUE_MSG_SIZE);
-    node->from_addr = from_addr;
+    node->msg[QUEUE_MSG_SIZE - 1] = '\0';
+
+    if (from_addr != NULL){
+        node->from_addr = *from_addr;
+        node->has_addr = 1;
+    } else {
+        node->has_addr = 0;
+    }
 
     q->tail = (q->tail + 1) % QUEUE_MAX;
     q->size++;
@@ -78,7 +91,9 @@ void q_pop(Queue * q, char * out[], struct sockaddr_in * sender){
     int idx = q->head;
     queue_node_t *node = &q->data[idx];
     get_and_tokenise(node, out);
-    *sender = node->from_addr;
+
+    if (node->has_addr) *sender = node->from_addr;
+    else memset(sender, 0, sizeof(*sender))
 
     q->head = (q->head + 1) % QUEUE_MAX;
     q->size--;
@@ -86,3 +101,4 @@ void q_pop(Queue * q, char * out[], struct sockaddr_in * sender){
     pthread_cond_signal(&q->nonfull);
     pthread_mutex_unlock(&q->lock);
 }
+

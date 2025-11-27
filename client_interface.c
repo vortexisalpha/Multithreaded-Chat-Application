@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include "udp.h"
+#include "client_types.h"
 #include <pthread.h>
 #include "cmd.h"
 
@@ -179,69 +181,117 @@ void execute_command(command_t *command, client_t *client, char client_messages[
 }
 
 
-// consider the client mode required thread
-// listener thread and send thread
+//reads socket and appends to queue
+void *cli_listener(void *arg){
+    cli_listener_args_t* listener_args = (cli_listener_args_t*)arg;
+    //takes in the queue and adds the server response command to it,
+    //queue is of form: [queue_node_t,...] each queue_node_t has msg and from addr
+    printf("Client is listening on server port: %d\n", SERVER_PORT);
+    while (1) {
+        // Storage for response from server
+        char server_response[BUFFER_SIZE];
+        client_t * = lister_args->client;
 
-void *listener(void* args){
-    while(1){
+        int rc = udp_socket_read(client_ptr->sd, &client_ptr->responder_addr, server_response, BUFFER_SIZE);
 
+        if (rc > 0){
+            q_append(listener_args->task_queue, server_response, NULL); // this includes queue full sleep for thread
+        }
     }
 }
 
-void *sender(void* args){
+//chat display args need message buffer, message_count pointer, client_t ptr
+//sleeps on no input
+void *chat_display_thread(void *arg){
+    chat_display_args_t* chat_args = (chat_display_args_t*)arg;
+
     while(1){
-        
+        clear_screen(); // comment this out for testing prints to console
+        printf("Chat Messages\n\n");
+
+        for (int i = 0; i < *chat_args->message_count; i++){
+            printf("%s\n", chat_args->messages[i]);
+        }
+
+        printf("-----------------------------------\n");
+
+        printf("> ");
+        //NEED TO IMPLEMENT COND SIGNAL WHEN MESSAGES IS UPDATED
+        //if pthread_cond_signal does not say that we must update the message display{:
+        // wait for input:
+        fgets(input, sizeof(input), stdin);
+
+        input[strcspn(input, "\n")] = 0; // remove \n when enter is pressed
+        client_t * client = chat_args->client;
+        int rc = udp_socket_write(client->sd, &client->server_addr, &input[0], BUFFER_SIZE);
+    
+        if (strcmp(input, ":q") == 0) break; // replace this with end_all_threads() function
     }
 
 }
+/*
+void join_with_spaces(char *tokenised_command[MAX_COMMAND_LEN], char *joint_msg) {
+    joint_msg[0] = '\0';
 
-// sender does not need a queue, (in-built buffer)
-// receiver strictly does not need a queue too. There is no synchronisation problem
+    for (int i = 0; tokenised_command[i] != NULL; i++) {
+        strcat(joint_msg, tokenised_command[i]);
+
+        //add space between words except last
+        if (tokenised_command[i+1] != NULL)
+            strcat(joint_msg, " ");
+    }
+}
+*/
+void execute_server_command(comand_t cmd){
+    
+}
+
+void *cli_queue_manager(void* arg){
+    cli_queue_manager_args_t* qm_args = (cli_queue_manager_args_t *)arg;
+    
+    client_t * client = qm_args->client;
+    while(1){
+        char * tokenised_command[MAX_COMMAND_LEN];
+
+        q_pop(qm_args->task_queue, tokenised_command, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
+
+        char client_request[BUFFER_SIZE];
+        command_t cmd;
+        command_handler(&cmd, tokenised_command); // fill out cur_command
+        execute_server_command(cmd);
+    }
+}
+
 
 
 // client code
 int main(int argc, char *argv[])
-{   
+{      
+    //setup code:
     client_t client;
+    Queue task_queue;
+
     setup_client(&client); // only sets client connected to false at the moment
+    queue_init(&task_queue);
 
     char messages[MAX_MSGS][MAX_LEN];
     int message_count = 0;
 
     char input[MAX_LEN];
 
-    while(1){
-        clear_screen(); // comment this out for testing prints to console
-        printf("Chat Messages\n\n");
+    //spawn listner
+    pthread_t listener_thread;
+    listener_args_t *cli_listener_args = malloc(sizeof(listener_args_t));
+    setup_listener_args(listener_args, sd, &task_queue);
+    pthread_create(&listener_thread, NULL, listener, listener_args);
+    pthread_detach(listener_thread); //?
 
-        for (int i = 0; i < message_count; i++){
-            printf("%s\n", messages[i]);
-        }
+    //spawn queue manager thread
+    pthread_t queue_manager_thread;
+    queue_manager_args_t *cli_queue_manager_args = malloc(sizeof(queue_manager_args_t));
+    setup_queue_manager_args(queue_manager_args,&task_queue, sd, &head, &tail);
+    pthread_create(&queue_manager_thread, NULL, queue_manager, queue_manager_args);
+    pthread_detach(queue_manager_thread);
 
-        printf("-----------------------------------\n");
-
-
-        //sender thread stuff
-        printf("> ");
-        fgets(input, sizeof(input), stdin);
-        input[strcspn(input, "\n")] = 0; // remove \n when enter is pressed
-        char *args[2];
-    
-        if (strcmp(input, ":q") == 0) break;
-
-        if (message_count < MAX_MSGS){
-            tokenise_input(input, args);//error check inpuct later
-
-            command_t command;
-            command_handler(&command, args);
-            execute_command(&command, &client, messages, &message_count);
-        }
-
-
-        //listner thread stuff
-        // create thread
-        pthread_t listener_thread; 
-        pthread_create(&listener_thread, NULL, listener, NULL); 
-    }
     return 0;
 }

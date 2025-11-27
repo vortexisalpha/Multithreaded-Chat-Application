@@ -1,5 +1,8 @@
 // libraries needed for various functions
 // use man page for details
+#ifndef UDP_HFILE
+#define UDP_HFILE
+
 #include <sys/types.h>  // data types like size_t, socklen_t
 #include <sys/socket.h> // socket(), bind(), connect(), listen(), accept()
 #include <netinet/in.h> // sockaddr_in, htons(), htonl(), INADDR_ANY
@@ -12,24 +15,6 @@
 #define BUFFER_SIZE 1024
 #define SERVER_PORT 12000
 #define NAME_SIZE 20
-
-typedef struct {
-    char name[NAME_SIZE];
-    int port;
-    bool connected;
-
-    int sd;
-    struct sockaddr_in server_addr;
-    struct sockaddr_in responder_addr;
-
-} client_t;
-
-
-void setup_client(client_t* client){
-    client->connected = false;
-    client->port = 0;
-    client->sd = 0;
-}
 
 //Takes in a socket address and puts the ip and the port in the socket address in "The correct format", Returns 0 if success else -1
 int set_socket_addr(struct sockaddr_in *addr, const char *ip, int port)
@@ -83,7 +68,7 @@ int udp_socket_open(int port)
     /// Note: binding with 0.0.0.0 means that the socket will accept
     // packets coming in to any interface (ip address) of this machine
     bind(sd, (struct sockaddr *)&this_addr, sizeof(this_addr));
-
+    
     return sd; // return the socket descriptor
 }
 
@@ -124,3 +109,4 @@ int udp_socket_write(int sd, struct sockaddr_in *addr, char *buffer, int n)
     int addr_len = sizeof(struct sockaddr_in);
     return sendto(sd, buffer, n, 0, (struct sockaddr *)addr, addr_len);
 }
+#endif
