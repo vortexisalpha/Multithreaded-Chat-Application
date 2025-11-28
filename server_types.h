@@ -1,8 +1,10 @@
 #include "cmd.h" // includes udp.h
 #include "queue.h"
-#define MAX_MUTED 100
 #define MAX_HISTORY 20 
+#define MAX_NAMES 50
+#define MAX_NAME_LEN 30
 #define MAX_LEN  256
+#define MAX_THREADS 32
 
 // linked list node struct
 
@@ -10,6 +12,7 @@ typedef struct client_node{
     struct client_node* next;
     struct sockaddr_in client_address;
     char client_name[NAME_SIZE];
+    muted_namelist_t* muted; 
 } client_node_t;
 
 void add_client_to_list(client_node_t **head,client_node_t **tail, struct sockaddr_in *addr, char name[NAME_SIZE]){
@@ -98,9 +101,8 @@ void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, clie
 // muted chat buffer, local to each user
 // initialise using new
 typedef struct {
-    char messages[MAX_MUTED][MAX_LEN];
-    int count;
-} muted_buffer_t;
+    char messages[MAX_NAMES][MAX_NAME_LEN]; 
+} muted_namelist_t;
 
 // we need a chat history (slightly different from a queue) for (1) proposed extension (2) muted chat perservance
 // this is a global struct (which I am not sure if the data structure is optimal)?
@@ -108,6 +110,8 @@ typedef struct {
     char messages[MAX_HISTORY][MAX_LEN];
     int count;
     pthread_mutex_t mutex;
+    pthread_cond_t ok_to_read; 
+    pthread_cond_t ok_to_write; 
 } chat_history_t;
 
-chat_history_t history;
+

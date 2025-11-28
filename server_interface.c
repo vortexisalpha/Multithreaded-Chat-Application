@@ -4,6 +4,22 @@
 
 // make this void *
 
+
+// Discussion note with Josh:
+// 1. The spawn and join should not be in the same thread - causing blocking -> not true multi-threading
+//    Use a thread-pool configuration (which is the queue manager)
+// 2. Use the name to be UID for now (assume no users with same name). Resolved by having login system (further enhancement)
+// 3. Accessing shared resources solved by condition variable with reader/writer setup. 
+// 4. SAY will spawns multiple threads, a 1-1 relation (server to client)
+// 5. Mute & unmute lists will have a name list (pointer arrays). 
+// 6. 
+
+
+
+// client to server command interface
+// send a string, separated by a space
+// e.g., sayto 
+
 void *listener(void *arg){
     listener_args_t* listener_args = (listener_args_t*)arg;
     //takes in the queue and adds the command into it,
@@ -40,12 +56,24 @@ void *connect_to_server(void* args){
     return NULL;
 }
 
+client_node_t* find_client(client_node_t* head, char who[]){
+    client_node_t* iter = head; 
+    while((strcmp(iter->client_name, who) != 0) && (iter != NULL)){
+        iter = iter->next; 
+    }
+    if(iter == NULL){
+        printf("Error, client not found\n"); 
+        exit(EXIT_FAILURE); 
+    }
+    return iter; 
+}
+
 void *say(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     char* who = cmd_args->command->args[0]; 
     char* message = cmd_args->command->args[1]; 
-    client_node_t **iter = cmd_args->head; 
-    client_node_t **check = cmd_args->tail; 
+    client_node_t *iter = cmd_args->head; 
+    client_node_t *check = cmd_args->tail; 
     while((iter!=check)&&(iter!=NULL)){
         char* send_message[MAX_MESSAGE]; 
         strncat(send_message, who, sizeof(send_message) - strlen(send_message)-1); 
@@ -62,16 +90,13 @@ void *sayto(void *args){
     char* from_who = cmd_args->command->args[0]; 
     char* to_who = cmd_args->command->args[1]; 
     char* message = cmd_args->command->args[2]; 
-    client_node_t *iter = cmd_args->head; 
-    while(strcmp(iter->client_name, to_who) != 0){
-        iter = iter->next; 
-    }
+    client_node_t* client = find_client(cmd_args->head, to_who); 
     char* send_message[MAX_MESSAGE]; 
     strncat(send_message, from_who, sizeof(send_message) - strlen(send_message)-1); 
     strncat(send_message, ": ", sizeof(send_message) - strlen(send_message)-1); 
     strncat(send_message, message, sizeof(send_message) - strlen(send_message)-1);
 
-    int rc = udp_socket_write(cmd_args->sd, &(iter->client_address), send_message, strlen(send_message)+1);
+    int rc = udp_socket_write(cmd_args->sd, &client->client_address, send_message, strlen(send_message)+1);
 
     // server side handling?
     
@@ -94,13 +119,16 @@ void *unmute(void *args){
 
 void *rename(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* name = cmd_args->command->args[0]; 
-    char* to_who = cmd_args->command->args[1]; 
-    char* message = cmd_args->command->args[2]; 
+    char* who = cmd_args->command->args[0]; 
+    char* new_name = cmd_args->command->args[1]; 
     client_node_t *iter = cmd_args->head; 
-    while(strcmp(iter->client_name, to_who) != 0){
-        iter = iter->next; 
-    }
+    client_node_t* client = find_client(cmd_args->head, who); 
+
+    // first assume there is no identical name & no request to be named to repeated name
+    char* send_message[MAX_MESSAGE] = "You have successfully changed your name to"; 
+    strcat(send_message, new_name); 
+    // send confirmation message to client
+    int rc = udp_socket_write(cmd_args->sd, &client->client_address, send_message, strlen(send_message)+1)
 }
 
 
@@ -126,7 +154,6 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
     switch(command->kind){
         case CONN:{
             pthread_create(&t, NULL, connect_to_server, execute_args);
-            pthread_join(t, NULL); //?
             break;
         }
         case SAY:

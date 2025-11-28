@@ -25,5 +25,4 @@ bool isEmpty(message_Queue* q) { return (q->front == q->rear - 1); }
 bool isFull(message_Queue* q) { return (q->rear == MAX_SIZE); }
 
 
-char activity_history[MAX_ACTIVITY][MAX_ACTIVITY_LOG]; 
 
