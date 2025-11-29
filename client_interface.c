@@ -209,7 +209,7 @@ void *chat_display(void *arg){
         pthread_mutex_lock(chat_args->messages_mutex);
         pthread_cond_wait(chat_args->messages_cond, chat_args->messages_mutex);
         
-        // Print any new messages that arrived
+        // print any new messages that arrived
         for (int i = last_displayed; i < *chat_args->message_count; i++){
             printf("%s\n", chat_args->messages[i]);
             fflush(stdout);
