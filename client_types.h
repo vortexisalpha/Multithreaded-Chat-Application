@@ -52,7 +52,7 @@ typedef struct{
     int * message_count;
 } chat_display_args_t;
 
-void setup_chat_display_args(chat_display_args_t* args, client_t * client, char messages[MAX_MSGS][MAX_LEN], int* message_count){
+void setup_chat_display_args(chat_display_args_t* args, client_t * client, char (*messages)[MAX_LEN], int* message_count){
     args->client = client;
     args->messages = messages;
     args->message_count = message_count;
@@ -65,7 +65,7 @@ typedef struct {
     int * message_count;
 } cli_queue_manager_args_t;
 
-void setup_cli_queue_manager_args(cli_queue_manager_args_t* args, client_t * client, Queue* task_queue, char messages[MAX_MSGS][MAX_LEN], int* message_count){
+void setup_cli_queue_manager_args(cli_queue_manager_args_t* args, client_t * client, Queue* task_queue, char (*messages)[MAX_LEN], int* message_count){
     args->client = client;
     args->task_queue = task_queue;
     args->messages = messages;
@@ -97,4 +97,5 @@ char* join(char arr[][NAME_SIZE]) {
 void say_exec(command_t* cmd, int* message_count, char messages[MAX_MSGS][MAX_LEN]){
     char * result = join(cmd->args);
     strcpy(messages[*message_count], result);
+    (*message_count)++;
 }

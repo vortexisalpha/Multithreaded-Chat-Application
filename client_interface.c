@@ -186,7 +186,7 @@ void *cli_listener(void *arg){
     while (1) {
         // Storage for response from server
         char server_response[BUFFER_SIZE];
-        client_t * = lister_args->client;
+        client_t * client_ptr = listener_args->client;
 
         int rc = udp_socket_read(client_ptr->sd, &client_ptr->responder_addr, server_response, BUFFER_SIZE);
 
@@ -198,7 +198,7 @@ void *cli_listener(void *arg){
 
 //chat display args need message buffer, message_count pointer, client_t ptr
 //sleeps on no input
-void *chat_display_thread(void *arg){
+void *chat_display(void *arg){
     chat_display_args_t* chat_args = (chat_display_args_t*)arg;
 
     while(1){
@@ -215,6 +215,7 @@ void *chat_display_thread(void *arg){
         //NEED TO IMPLEMENT COND SIGNAL WHEN MESSAGES IS UPDATED
         //if pthread_cond_signal does not say that we must update the message display{:
         // wait for input:
+        char *input;
         fgets(input, sizeof(input), stdin);
 
         input[strcspn(input, "\n")] = 0; // remove \n when enter is pressed
@@ -225,22 +226,14 @@ void *chat_display_thread(void *arg){
     }
 }
 
-/*
-void join_with_spaces(char *tokenised_command[MAX_COMMAND_LEN], char *joint_msg) {
-    joint_msg[0] = '\0';
-
-    for (int i = 0; tokenised_command[i] != NULL; i++) {
-        strcat(joint_msg, tokenised_command[i]);
-
-        //add space between words except last
-        if (tokenised_command[i+1] != NULL)
-            strcat(joint_msg, " ");
+void execute_server_command(command_t *cmd, int * message_count, char * messages[MAX_LEN]){
+    switch(cmd->kind){
+        case SAY:
+            say_exec(cmd, message_count, messages);
     }
 }
-*/
-void execute_server_command(comand_t cmd){
-    case
-}
+
+//queue manager thread
 
 void *cli_queue_manager(void* arg){
     cli_queue_manager_args_t* qm_args = (cli_queue_manager_args_t *)arg;
@@ -254,7 +247,7 @@ void *cli_queue_manager(void* arg){
         char client_request[BUFFER_SIZE];
         command_t cmd;
         command_handler(&cmd, tokenised_command); // fill out cur_command
-        execute_server_command(cmd);
+        execute_server_command(&cmd, qm_args->message_count, qm_args->messages);
     }
 }
 
@@ -275,19 +268,29 @@ int main(int argc, char *argv[])
 
     char input[MAX_LEN];
 
+    //spawn chat thread
+    pthread_t chat_display_thread;
+    chat_display_args_t *chat_display_args = malloc(sizeof(chat_display_args_t));
+    setup_chat_display_args(chat_display_args, &client, messages, &message_count);
+    pthread_create(&chat_display_thread, NULL, chat_display, chat_display_args);
+    pthread_detach(chat_display_thread);
+
     //spawn listner
     pthread_t listener_thread;
-    listener_args_t *cli_listener_args = malloc(sizeof(listener_args_t));
-    setup_listener_args(listener_args, sd, &task_queue);
-    pthread_create(&listener_thread, NULL, listener, listener_args);
+    cli_listener_args_t *cli_listener_args = malloc(sizeof(cli_listener_args_t));
+    setup_cli_listner_args(cli_listener_args, &client, &task_queue);
+    pthread_create(&listener_thread, NULL, cli_listener, cli_listener_args);
     pthread_detach(listener_thread); //?
 
     //spawn queue manager thread
     pthread_t queue_manager_thread;
-    queue_manager_args_t *cli_queue_manager_args = malloc(sizeof(queue_manager_args_t));
-    setup_queue_manager_args(queue_manager_args,&task_queue, sd, &head, &tail);
-    pthread_create(&queue_manager_thread, NULL, queue_manager, queue_manager_args);
+    cli_queue_manager_args_t *cli_queue_manager_args = malloc(sizeof(cli_queue_manager_args_t));
+    setup_cli_queue_manager_args(cli_queue_manager_args, &client, &task_queue, messages, &message_count);
+    pthread_create(&queue_manager_thread, NULL, cli_queue_manager, cli_queue_manager_args);
     pthread_detach(queue_manager_thread);
+    
+
+    pthread_exit(NULL); // exit main thread but keep other bg threads
 
     return 0;
 }
