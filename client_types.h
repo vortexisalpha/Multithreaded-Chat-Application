@@ -62,7 +62,10 @@ typedef struct {
     Queue * task_queue;
 } cli_queue_manager_args_t;
 
-
+void setup_cli_queue_manager_args(cli_listener_args_t* args, client_t * client, Queue* task_queue){
+    args->client = client;
+    args->task_queue = task_queue;
+}
 
 
 ///cmds:///
