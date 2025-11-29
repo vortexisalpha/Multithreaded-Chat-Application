@@ -64,6 +64,14 @@ void setup_chat_display_args(chat_display_args_t* args, client_t * client, char 
 
 typedef struct {
     client_t * client;
+} user_input_args_t;
+
+void setup_user_input_args(user_input_args_t* args, client_t * client){
+    args->client = client;
+}
+
+typedef struct {
+    client_t * client;
     Queue * task_queue;
     char (*messages)[MAX_LEN];
     int * message_count;

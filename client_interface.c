@@ -224,9 +224,9 @@ void *chat_display(void *arg){
 
 // user input thread handles user typing and sending
 void *user_input(void *arg){
-    chat_display_args_t* chat_args = (chat_display_args_t*)arg;
+    user_input_args_t* input_args = (user_input_args_t*)arg;
     char input[MAX_LEN];
-    client_t* client = chat_args->client;
+    client_t* client = input_args->client;
 
     while(1){
         printf("> ");
@@ -305,7 +305,9 @@ int main(int argc, char *argv[])
 
     //spawn user input thread
     pthread_t user_input_thread;
-    pthread_create(&user_input_thread, NULL, user_input, chat_display_args);
+    user_input_args_t *user_input_args = malloc(sizeof(user_input_args_t));
+    setup_user_input_args(user_input_args, &client);
+    pthread_create(&user_input_thread, NULL, user_input, user_input_args);
     pthread_detach(user_input_thread);
 
     //spawn listner
