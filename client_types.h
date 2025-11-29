@@ -110,7 +110,7 @@ char* join(char arr[][NAME_SIZE]) {
     return result;
 }
 
-void say_exec(command_t* cmd, int* message_count, char messages[MAX_MSGS][MAX_LEN], pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
+void say_exec(command_t* cmd, int* message_count, char (*messages)[MAX_LEN], pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     pthread_mutex_lock(message_mutex);
     char * result = join(cmd->args);
     strcpy(messages[*message_count], result);
