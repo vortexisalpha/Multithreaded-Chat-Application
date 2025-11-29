@@ -1,7 +1,8 @@
-#include "udp.h"
+#ifndef COMMAND_HEADER
+#define COMMAND_HEADER
 
-#define MAX_CMD_SIZE 3
-#define NAME_SIZE 20
+#include "udp.h"
+#define MAX_MESSAGE 256
 
 typedef enum {
     CONN,
@@ -56,4 +57,16 @@ void command_handler(command_t *command, char *args[]){
         command->args[out][0] = '\0';
         out++;
     }
+
+    /* Some example of the command call
+        1. conn$ client_name (arg0~1)
+        2. say$ msg (arg0~1)
+        3. sayto$ recipient_name msg (arg0~2)
+        4. disconn$ (arg0)
+        5. mute$ client_name (arg0~1)
+        6. unmute$ client_name (arg0~1)
+        7. rename$ new_name (arg0~1)
+        8. kick$ client_name (arg0~1)
+    */
 }
+#endif

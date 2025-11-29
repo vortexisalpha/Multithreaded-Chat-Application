@@ -1,5 +1,3 @@
-
-#include <stdio.h>
 #include <stdlib.h>
 #include "server_types.h"
 
@@ -41,18 +39,116 @@ void *connect_to_server(void* args){
     return NULL;
 }
 
+void *say(void *args){
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    char* who = cmd_args->command->args[0]; 
+    char* message = cmd_args->command->args[1]; 
+    client_node_t **iter = cmd_args->head; 
+    client_node_t **check = cmd_args->tail; 
+    while((iter!=check)&&(iter!=NULL)){
+        char* send_message[MAX_MESSAGE]; 
+        strncat(send_message, who, sizeof(send_message) - strlen(send_message)-1); 
+        strncat(send_message, ": ", sizeof(send_message) - strlen(send_message)-1); 
+        strncat(send_message, message, sizeof(send_message) - strlen(send_message)-1);
+        int rc = udp_socket_write(cmd_args->sd, &(iter->client_address), send_message, strlen(send_message)+1);
+        iter = iter->next; 
+    }
+}
+
+
+void *sayto(void *args){
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    char* from_who = cmd_args->command->args[0]; 
+    char* to_who = cmd_args->command->args[1]; 
+    char* message = cmd_args->command->args[2]; 
+    client_node_t *iter = cmd_args->head; 
+    while(strcmp(iter->client_name, to_who) != 0){
+        iter = iter->next; 
+    }
+    char* send_message[MAX_MESSAGE]; 
+    strncat(send_message, from_who, sizeof(send_message) - strlen(send_message)-1); 
+    strncat(send_message, ": ", sizeof(send_message) - strlen(send_message)-1); 
+    strncat(send_message, message, sizeof(send_message) - strlen(send_message)-1);
+
+    int rc = udp_socket_write(cmd_args->sd, &(iter->client_address), send_message, strlen(send_message)+1);
+
+    // server side handling?
+    
+}
+
+void *disconnect(void *args){
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    char* name = cmd_args->command->args[0]; 
+    remove_client_from_list(*cmd_args->head, name); 
+}
+
+void *mute(void *args){
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+
+}
+
+void *unmute(void *args){
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+}
+
+void *rename(void *args){
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    char* name = cmd_args->command->args[0]; 
+    char* to_who = cmd_args->command->args[1]; 
+    char* message = cmd_args->command->args[2]; 
+    client_node_t *iter = cmd_args->head; 
+    while(strcmp(iter->client_name, to_who) != 0){
+        iter = iter->next; 
+    }
+}
+
+
+void *kick(void *args){
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    // remove the client from the linked list
+    char* name = cmd_args->command->args[0]; 
+    remove_client_from_list(cmd_args->head, name); 
+
+    // send client "You have been removed from the chat"
+
+
+    // send everyone "(Whom) has been removed from the chat"
+}
+
+
 
 void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_in* from_addr, client_node_t **head, client_node_t **tail){
     //make all threads neccesary for command to be executed and wait for them to be executed
+    pthread_t t;
+    execute_command_args_t *execute_args = malloc(sizeof(execute_command_args_t));
+    setup_command_args(execute_args,sd,command, from_addr, head, tail);
     switch(command->kind){
         case CONN:{
-            pthread_t t;
-            execute_command_args_t *execute_args = malloc(sizeof(execute_command_args_t));
-            setup_command_args(execute_args,sd,command, from_addr, head, tail);
             pthread_create(&t, NULL, connect_to_server, execute_args);
             pthread_join(t, NULL); //?
             break;
         }
+        case SAY:
+            pthread_create(&t, NULL, say, execute_args); 
+            break; 
+        case SAYTO:
+            pthread_create(&t, NULL, sayto, execute_args); 
+            break; 
+        case DISCONN:
+            pthread_create(&t, NULL, disconnect, execute_args); 
+            break; 
+        case MUTE:
+            pthread_create(&t, NULL, mute, execute_args); 
+            break; 
+        case UNMUTE:
+            pthread_create(&t, NULL, unmute, execute_args); 
+            break; 
+        case RENAME:
+            pthread_create(&t, NULL, rename, execute_args); 
+            break; 
+        case KICK:
+            pthread_create(&t, NULL, kick, execute_args); 
+            break; 
         default:
             break;
     }
