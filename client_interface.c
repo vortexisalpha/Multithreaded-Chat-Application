@@ -226,7 +226,8 @@ void *chat_display(void *arg){
     }
 }
 
-void execute_server_command(command_t *cmd, int * message_count, char * messages[MAX_LEN]){
+//execute server response. e.g say command
+void execute_server_command(command_t *cmd, int * message_count, char (* messages)[MAX_LEN]){
     switch(cmd->kind){
         case SAY:
             say_exec(cmd, message_count, messages);
@@ -234,7 +235,7 @@ void execute_server_command(command_t *cmd, int * message_count, char * messages
 }
 
 //queue manager thread
-
+//decodes request coming in to server and calls execute_server_command to execute on client side
 void *cli_queue_manager(void* arg){
     cli_queue_manager_args_t* qm_args = (cli_queue_manager_args_t *)arg;
     
