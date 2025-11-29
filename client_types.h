@@ -50,12 +50,16 @@ typedef struct{
     client_t * client;
     char (*messages)[MAX_LEN];
     int * message_count;
+    pthread_mutex_t * messages_mutex;
+    pthread_cond_t * messages_cond;
 } chat_display_args_t;
 
-void setup_chat_display_args(chat_display_args_t* args, client_t * client, char (*messages)[MAX_LEN], int* message_count){
+void setup_chat_display_args(chat_display_args_t* args, client_t * client, char (*messages)[MAX_LEN], int* message_count, pthread_mutex_t* mutex, pthread_cond_t* cond){
     args->client = client;
     args->messages = messages;
     args->message_count = message_count;
+    args->messages_mutex = mutex;
+    args->messages_cond = cond;
 }
 
 typedef struct {
@@ -63,13 +67,17 @@ typedef struct {
     Queue * task_queue;
     char (*messages)[MAX_LEN];
     int * message_count;
+    pthread_mutex_t * messages_mutex;
+    pthread_cond_t * messages_cond;
 } cli_queue_manager_args_t;
 
-void setup_cli_queue_manager_args(cli_queue_manager_args_t* args, client_t * client, Queue* task_queue, char (*messages)[MAX_LEN], int* message_count){
+void setup_cli_queue_manager_args(cli_queue_manager_args_t* args, client_t * client, Queue* task_queue, char (*messages)[MAX_LEN], int* message_count, pthread_mutex_t* mutex, pthread_cond_t* cond){
     args->client = client;
     args->task_queue = task_queue;
     args->messages = messages;
     args->message_count = message_count;
+    args->messages_mutex = mutex;
+    args->messages_cond = cond;
 }
 
 ///cmds:///
@@ -94,8 +102,11 @@ char* join(char arr[][NAME_SIZE]) {
     return result;
 }
 
-void say_exec(command_t* cmd, int* message_count, char messages[MAX_MSGS][MAX_LEN]){
+void say_exec(command_t* cmd, int* message_count, char messages[MAX_MSGS][MAX_LEN], pthread_mutex_t* mutex, pthread_cond_t* cond){
+    pthread_mutex_lock(mutex);
     char * result = join(cmd->args);
     strcpy(messages[*message_count], result);
     (*message_count)++;
+    pthread_cond_signal(cond);  //signal that messages were updated
+    pthread_mutex_unlock(mutex);
 }
