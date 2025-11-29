@@ -182,7 +182,7 @@ void *cli_listener(void *arg){
     cli_listener_args_t* listener_args = (cli_listener_args_t*)arg;
     //takes in the queue and adds the server response command to it,
     //queue is of form: [queue_node_t,...] each queue_node_t has msg and from addr
-    printf("Client is listening on server port: %d\n", SERVER_PORT);
+    
     while (1) {
         // Storage for response from server
         char server_response[BUFFER_SIZE];
@@ -196,12 +196,19 @@ void *cli_listener(void *arg){
     }
 }
 
-// chat display thread prints new messages as they arrive
+// chat display thread prints messages in a fixed area at top of screen
 void *chat_display(void *arg){
     chat_display_args_t* chat_args = (chat_display_args_t*)arg;
-    int last_displayed = 0;
-
-    printf("Chat Messages \n\n");
+    
+    //initial screen setup
+    printf("\033[2J"); // Clear screen
+    printf("\033[H"); // Move cursor to home
+    printf("Chat Messages: \n\n");
+    printf("------------------------\n\n");
+    
+    //draw initial prompt
+    printf("\033[25;1H"); //move cursor to line 25 collumn 1
+    printf("> ");
     fflush(stdout);
 
     while(1){
@@ -209,12 +216,21 @@ void *chat_display(void *arg){
         pthread_mutex_lock(chat_args->messages_mutex);
         pthread_cond_wait(chat_args->messages_cond, chat_args->messages_mutex);
         
-        // print any new messages that arrived
-        for (int i = last_displayed; i < *chat_args->message_count; i++){
+        //redraw entire message area
+        printf("\033[4;1H"); // move to line 4, column 1 
+        printf("\033[J"); //clear from cursor to end of screen
+        
+        //print all messages (keeping last 20 visible)
+        int start = (*chat_args->message_count > 20) ? *chat_args->message_count - 20 : 0;
+        for (int i = start; i < *chat_args->message_count; i++){
             printf("%s\n", chat_args->messages[i]);
-            fflush(stdout);
         }
-        last_displayed = *chat_args->message_count;
+        
+        //redraw input prompt at bottom
+        printf("\033[25;1H"); // Line 25 (bottom of typical terminal)
+        printf("\033[K"); // clear line
+        printf("> ");
+        fflush(stdout);
         
         pthread_mutex_unlock(chat_args->messages_mutex);
     }
@@ -227,8 +243,14 @@ void *user_input(void *arg){
     user_input_args_t* input_args = (user_input_args_t*)arg;
     char input[MAX_LEN];
     client_t* client = input_args->client;
+    
+    //give display thread time to set up screen
+    sleep(1);
 
     while(1){
+        //position cursor at bottom for input
+        printf("\033[25;1H"); // Line 25, column 1
+        printf("\033[K"); // clear the line
         printf("> ");
         fflush(stdout);
         
@@ -236,11 +258,12 @@ void *user_input(void *arg){
             input[strcspn(input, "\n")] = 0; // remove newline
             
             if (strcmp(input, ":q") == 0) {
-                printf("Exiting\n");
-                exit(0); // simple exit for now
+                printf("\033[2J\033[H"); // Clear screen before exit
+                printf("Exiting...\n");
+                exit(0);
             }
             
-            // Send message to server
+            //send to server
             if (strlen(input) > 0) {
                 udp_socket_write(client->sd, &client->server_addr, input, strlen(input) + 1);
             }
