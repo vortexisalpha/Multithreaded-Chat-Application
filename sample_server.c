@@ -34,13 +34,8 @@ int main(int argc, char *argv[])
         // Successfully received an incoming request
         if (rc > 0)
         {
-            // Demo code (remove later)
-            strcpy(server_response, "Hi, the server has received: ");
-            strcat(server_response, client_request);
-            strcat(server_response, "\n");
-            char* port_n;
-            sprintf(port_n, "client port: %d", ntohs(client_address.sin_port));
-            strcat(server_response, "SAY alice: hi! \0");
+            // Demo code: send a SAY command back to client
+            strcpy(server_response, "say$ Server received your message!");
 
             // This function writes back to the incoming client,
             // whose address is now available in client_address, 

@@ -5,7 +5,7 @@
 
 #define QUEUE_MAX 256
 #define QUEUE_MSG_SIZE 512
-#define MAX_COMMAND_LEN 3
+#define MAX_COMMAND_LEN 50  // Support multi-word messages + NULL terminator
 
 //added has_addr so that it works for client side and server side queues. Clients dont need from_addr
 typedef struct {
@@ -44,7 +44,7 @@ void get_and_tokenise(queue_node_t *node, char * args[]){
     remove_dollar_sign(node->msg);
     char *token = strtok(node->msg, " "); 
     int argsc = 0; 
-    while (token != NULL && argsc < MAX_COMMAND_LEN) // max len command = sayto, to, msg = len 3
+    while (token != NULL && argsc < MAX_COMMAND_LEN - 1) // max 3 args, leave room for NULL
     {
         args[(argsc)++] = token;
         token = strtok(NULL, " ");
@@ -92,8 +92,10 @@ void q_pop(Queue * q, char * out[], struct sockaddr_in * sender){
     queue_node_t *node = &q->data[idx];
     get_and_tokenise(node, out);
 
-    if (node->has_addr) *sender = node->from_addr;
-    else memset(sender, 0, sizeof(*sender))
+    if (sender != NULL) {
+        if (node->has_addr) *sender = node->from_addr;
+        else memset(sender, 0, sizeof(*sender));
+    }
 
     q->head = (q->head + 1) % QUEUE_MAX;
     q->size--;

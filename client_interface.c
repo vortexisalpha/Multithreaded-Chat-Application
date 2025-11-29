@@ -255,6 +255,9 @@ void execute_server_command(command_t *cmd, int * message_count, char (* message
     switch(cmd->kind){
         case SAY:
             say_exec(cmd, message_count, messages, mutex, cond);
+            break;
+        default:
+            break;
     }
 }
 
@@ -265,7 +268,7 @@ void *cli_queue_manager(void* arg){
     
     client_t * client = qm_args->client;
     while(1){
-        char * tokenised_command[MAX_COMMAND_LEN];
+        char * tokenised_command[MAX_COMMAND_LEN] = {NULL};
 
         q_pop(qm_args->task_queue, tokenised_command, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
 
@@ -288,11 +291,11 @@ int main(int argc, char *argv[])
 
     setup_client(&client); // only sets client connected to false at the moment
     queue_init(&task_queue);
-
+    connect_to_server("John\0", &client);
     char messages[MAX_MSGS][MAX_LEN];
     int message_count = 0;
 
-    // Initialize mutex and condition variable for message synchronization
+    //initialize mutex and condition variable for message synchronization
     pthread_mutex_t messages_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t messages_cond = PTHREAD_COND_INITIALIZER;
 

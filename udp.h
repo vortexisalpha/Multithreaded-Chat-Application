@@ -16,7 +16,7 @@
 #define BUFFER_SIZE 1024
 #define SERVER_PORT 12000
 #define NAME_SIZE 20
-#define MAX_CMD_SIZE 3
+#define MAX_CMD_SIZE 50  // Support multi-word messages
 #define MAX_MSGS 100
 #define MAX_LEN 1024
 
