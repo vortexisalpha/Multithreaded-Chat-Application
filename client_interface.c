@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <time.h>
 #include <sys/select.h>
 #include "udp.h"
 #include "cmd.h"
@@ -197,38 +196,58 @@ void *cli_listener(void *arg){
     }
 }
 
-//chat display args need message buffer, message_count pointer, client_t ptr
-//sleeps on no input
+// chat display thread prints new messages as they arrive
 void *chat_display(void *arg){
     chat_display_args_t* chat_args = (chat_display_args_t*)arg;
-    char input[MAX_LEN];
+    int last_displayed = 0;
+
+    printf("Chat Messages \n\n");
+    fflush(stdout);
 
     while(1){
-        // Lock mutex and display current messages
-        //pthread_mutex_lock(chat_args->messages_mutex);
+        //wait for new messages
+        pthread_mutex_lock(chat_args->messages_mutex);
+        pthread_cond_wait(chat_args->messages_cond, chat_args->messages_mutex);
         
-        clear_screen(); // comment this out for testing prints to console
-        printf("Chat Messages\n\n");
-
-        for (int i = 0; i < *chat_args->message_count; i++){
+        // Print any new messages that arrived
+        for (int i = last_displayed; i < *chat_args->message_count; i++){
             printf("%s\n", chat_args->messages[i]);
+            fflush(stdout);
         }
-
-        printf("-----------------------------------\n");
-
-        printf("> ");
-        //NEED TO IMPLEMENT COND SIGNAL WHEN MESSAGES IS UPDATED
-        //if pthread_cond_signal does not say that we must update the message display{:
-        // wait for input:
-        char *input;
-        fgets(input, sizeof(input), stdin);
-
-        input[strcspn(input, "\n")] = 0; // remove \n when enter is pressed
-        client_t * client = chat_args->client;
-        int rc = udp_socket_write(client->sd, &client->server_addr, &input[0], BUFFER_SIZE);
-    
-        if (strcmp(input, ":q") == 0) break; // replace this with end_all_threads() function
+        last_displayed = *chat_args->message_count;
+        
+        pthread_mutex_unlock(chat_args->messages_mutex);
     }
+    
+    return NULL;
+}
+
+// user input thread handles user typing and sending
+void *user_input(void *arg){
+    chat_display_args_t* chat_args = (chat_display_args_t*)arg;
+    char input[MAX_LEN];
+    client_t* client = chat_args->client;
+
+    while(1){
+        printf("> ");
+        fflush(stdout);
+        
+        if (fgets(input, sizeof(input), stdin) != NULL) {
+            input[strcspn(input, "\n")] = 0; // remove newline
+            
+            if (strcmp(input, ":q") == 0) {
+                printf("Exiting\n");
+                exit(0); // simple exit for now
+            }
+            
+            // Send message to server
+            if (strlen(input) > 0) {
+                udp_socket_write(client->sd, &client->server_addr, input, strlen(input) + 1);
+            }
+        }
+    }
+    
+    return NULL;
 }
 
 //execute server response. e.g say command
@@ -277,14 +296,17 @@ int main(int argc, char *argv[])
     pthread_mutex_t messages_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t messages_cond = PTHREAD_COND_INITIALIZER;
 
-    char input[MAX_LEN];
-
-    //spawn chat thread
+    //spawn chat display thread
     pthread_t chat_display_thread;
     chat_display_args_t *chat_display_args = malloc(sizeof(chat_display_args_t));
     setup_chat_display_args(chat_display_args, &client, messages, &message_count, &messages_mutex, &messages_cond);
     pthread_create(&chat_display_thread, NULL, chat_display, chat_display_args);
     pthread_detach(chat_display_thread);
+
+    //spawn user input thread
+    pthread_t user_input_thread;
+    pthread_create(&user_input_thread, NULL, user_input, chat_display_args);
+    pthread_detach(user_input_thread);
 
     //spawn listner
     pthread_t listener_thread;
