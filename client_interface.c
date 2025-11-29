@@ -196,18 +196,17 @@ void *cli_listener(void *arg){
     }
 }
 
-// chat display thread prints messages in a fixed area at top of screen
+// chat display thread with adaptive growing display
 void *chat_display(void *arg){
     chat_display_args_t* chat_args = (chat_display_args_t*)arg;
     
-    //initial screen setup
-    printf("\033[2J"); // Clear screen
-    printf("\033[H"); // Move cursor to home
-    printf("Chat Messages: \n\n");
-    printf("------------------------\n\n");
+    //enter alternate screen buffer
+    printf("\033[?1049h");
     
-    //draw initial prompt
-    printf("\033[25;1H"); //move cursor to line 25 collumn 1
+    //initial screen setup
+    printf("\033[2J\033[H"); // clear screen and move to home
+    printf("Chat Messages:\n\n");
+    printf("---------------------\n");
     printf("> ");
     fflush(stdout);
 
@@ -216,19 +215,20 @@ void *chat_display(void *arg){
         pthread_mutex_lock(chat_args->messages_mutex);
         pthread_cond_wait(chat_args->messages_cond, chat_args->messages_mutex);
         
-        //redraw entire message area
-        printf("\033[4;1H"); // move to line 4, column 1 
-        printf("\033[J"); //clear from cursor to end of screen
+        //redraw entire screen from top
+        printf("\033[2J\033[H"); // Clear and go to top
         
-        //print all messages (keeping last 20 visible)
-        int start = (*chat_args->message_count > 20) ? *chat_args->message_count - 20 : 0;
-        for (int i = start; i < *chat_args->message_count; i++){
+        //draw header
+        printf("Chat Messages:\n\n");
+        
+        //print all messages (grows dynamically)
+        int total_messages = *chat_args->message_count;
+        for (int i = 0; i < total_messages; i++){
             printf("%s\n", chat_args->messages[i]);
         }
         
-        //redraw input prompt at bottom
-        printf("\033[25;1H"); // Line 25 (bottom of typical terminal)
-        printf("\033[K"); // clear line
+        //draw separator and prompt right after messages
+        printf("\n---------------------\n");
         printf("> ");
         fflush(stdout);
         
@@ -248,17 +248,13 @@ void *user_input(void *arg){
     sleep(1);
 
     while(1){
-        //position cursor at bottom for input
-        printf("\033[25;1H"); // Line 25, column 1
-        printf("\033[K"); // clear the line
-        printf("> ");
-        fflush(stdout);
-        
+        //read input
         if (fgets(input, sizeof(input), stdin) != NULL) {
             input[strcspn(input, "\n")] = 0; // remove newline
             
             if (strcmp(input, ":q") == 0) {
-                printf("\033[2J\033[H"); // Clear screen before exit
+                //exit alternate screen buffer and return to normal terminal
+                printf("\033[?1049l");
                 printf("Exiting...\n");
                 exit(0);
             }

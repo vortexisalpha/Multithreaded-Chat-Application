@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
         char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
 
         // Demo code (remove later)
-        printf("Server is listening on port %d\n", SERVER_PORT);
+        //printf("Server is listening on port %d\n", SERVER_PORT);
 
         // Variable to store incoming client's IP address and port
         struct sockaddr_in client_address;
@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
             rc = udp_socket_write(sd, &client_address, server_response, BUFFER_SIZE);
 
             // Demo code (remove later)
-            printf("Request served...\n");
+            //printf("Request served...\n");
         }
     }
 
