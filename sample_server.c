@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
             strcat(server_response, "\n");
             char* port_n;
             sprintf(port_n, "client port: %d", ntohs(client_address.sin_port));
-            strcat(server_response, port_n);
+            strcat(server_response, "SAY alice: hi! \0");
 
             // This function writes back to the incoming client,
             // whose address is now available in client_address, 

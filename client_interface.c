@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <time.h>
+#include <sys/select.h>
 #include "udp.h"
 #include "cmd.h"
 #include "client_types.h"
@@ -200,8 +201,12 @@ void *cli_listener(void *arg){
 //sleeps on no input
 void *chat_display(void *arg){
     chat_display_args_t* chat_args = (chat_display_args_t*)arg;
+    char input[MAX_LEN];
 
     while(1){
+        // Lock mutex and display current messages
+        //pthread_mutex_lock(chat_args->messages_mutex);
+        
         clear_screen(); // comment this out for testing prints to console
         printf("Chat Messages\n\n");
 
@@ -227,10 +232,10 @@ void *chat_display(void *arg){
 }
 
 //execute server response. e.g say command
-void execute_server_command(command_t *cmd, int * message_count, char (* messages)[MAX_LEN]){
+void execute_server_command(command_t *cmd, int * message_count, char (* messages)[MAX_LEN], pthread_mutex_t* mutex, pthread_cond_t* cond){
     switch(cmd->kind){
         case SAY:
-            say_exec(cmd, message_count, messages);
+            say_exec(cmd, message_count, messages, mutex, cond);
     }
 }
 
@@ -248,8 +253,9 @@ void *cli_queue_manager(void* arg){
         char client_request[BUFFER_SIZE];
         command_t cmd;
         command_handler(&cmd, tokenised_command); // fill out cur_command
-        execute_server_command(&cmd, qm_args->message_count, qm_args->messages);
+        execute_server_command(&cmd, qm_args->message_count, qm_args->messages, qm_args->messages_mutex, qm_args->messages_cond);
     }
+    return NULL;
 }
 
 
@@ -267,12 +273,16 @@ int main(int argc, char *argv[])
     char messages[MAX_MSGS][MAX_LEN];
     int message_count = 0;
 
+    // Initialize mutex and condition variable for message synchronization
+    pthread_mutex_t messages_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t messages_cond = PTHREAD_COND_INITIALIZER;
+
     char input[MAX_LEN];
 
     //spawn chat thread
     pthread_t chat_display_thread;
     chat_display_args_t *chat_display_args = malloc(sizeof(chat_display_args_t));
-    setup_chat_display_args(chat_display_args, &client, messages, &message_count);
+    setup_chat_display_args(chat_display_args, &client, messages, &message_count, &messages_mutex, &messages_cond);
     pthread_create(&chat_display_thread, NULL, chat_display, chat_display_args);
     pthread_detach(chat_display_thread);
 
@@ -286,7 +296,7 @@ int main(int argc, char *argv[])
     //spawn queue manager thread
     pthread_t queue_manager_thread;
     cli_queue_manager_args_t *cli_queue_manager_args = malloc(sizeof(cli_queue_manager_args_t));
-    setup_cli_queue_manager_args(cli_queue_manager_args, &client, &task_queue, messages, &message_count);
+    setup_cli_queue_manager_args(cli_queue_manager_args, &client, &task_queue, messages, &message_count, &messages_mutex, &messages_cond);
     pthread_create(&queue_manager_thread, NULL, cli_queue_manager, cli_queue_manager_args);
     pthread_detach(queue_manager_thread);
     
