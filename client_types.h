@@ -51,6 +51,11 @@ typedef struct{
     int * message_count;
 } chat_display_args_t;
 
+void setup_chat_display_args(chat_display_args_t* args, client_t * client, char messages[MAX_MSGS][MAX_LEN], int* message_count){
+    args->client = client;
+    args->mssages = messages;
+    args->message_count = message_count;
+}
 
 typedef struct {
     client_t * client;
