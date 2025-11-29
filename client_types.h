@@ -1,5 +1,6 @@
 #include "udp.h"
 #include "queue.h"
+#include "cmd.h"
 
 //client
 typedef struct {
@@ -28,7 +29,7 @@ void connect_command(client_t* client, char name[NAME_SIZE]){
         printf("Client failed to connect to server");
         return;
     }
-    client->name = name;
+    strcpy(client->name, name);
     client->connected = true;
 }
 
@@ -60,11 +61,15 @@ void setup_chat_display_args(chat_display_args_t* args, client_t * client, char 
 typedef struct {
     client_t * client;
     Queue * task_queue;
+    char (*messages)[MAX_LEN];
+    int * message_count;
 } cli_queue_manager_args_t;
 
-void setup_cli_queue_manager_args(cli_listener_args_t* args, client_t * client, Queue* task_queue){
+void setup_cli_queue_manager_args(cli_queue_manager_args_t* args, client_t * client, Queue* task_queue, char messages[MAX_MSGS][MAX_LEN], int* message_count){
     args->client = client;
     args->task_queue = task_queue;
+    args->messages = messages;
+    args->message_count = message_count;
 }
 
 ///cmds:///
@@ -72,7 +77,7 @@ void setup_cli_queue_manager_args(cli_listener_args_t* args, client_t * client, 
 //tbc... figure out what you need in here
 
 //helper func join:
-char* join(char arr[][50]) {
+char* join(char arr[][NAME_SIZE]) {
     static char result[300];
     result[0] = '\0';
 
@@ -91,6 +96,5 @@ char* join(char arr[][50]) {
 
 void say_exec(command_t* cmd, int* message_count, char messages[MAX_MSGS][MAX_LEN]){
     char * result = join(cmd->args);
-    strcpy(messages[message_count], result);
-    
+    strcpy(messages[*message_count], result);
 }
