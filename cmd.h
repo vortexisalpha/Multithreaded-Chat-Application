@@ -1,7 +1,4 @@
 #include "udp.h"
-
-#define MAX_CMD_SIZE 3
-#define NAME_SIZE 20
 #define MAX_MESSAGE 256
 
 typedef enum {

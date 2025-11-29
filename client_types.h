@@ -47,13 +47,13 @@ void setup_cli_listner_args(cli_listener_args_t* args, client_t * client, Queue*
 
 typedef struct{ 
     client_t * client;
-    char messages[MAX_MSGS][MAX_LEN];
+    char (*messages)[MAX_LEN];
     int * message_count;
 } chat_display_args_t;
 
 void setup_chat_display_args(chat_display_args_t* args, client_t * client, char messages[MAX_MSGS][MAX_LEN], int* message_count){
     args->client = client;
-    args->mssages = messages;
+    args->messages = messages;
     args->message_count = message_count;
 }
 
@@ -67,18 +67,30 @@ void setup_cli_queue_manager_args(cli_listener_args_t* args, client_t * client, 
     args->task_queue = task_queue;
 }
 
-
 ///cmds:///
 
 //tbc... figure out what you need in here
-typedef struct {
-    int sd;
-    command_t* command;
-    struct sockaddr_in* from_addr;
-    client_node_t **head;
-    client_node_t **tail;
-} execute_command_args_t;
 
-void setup_execute_command_args(execute_command_args_t * args){
-    args->
+//helper func join:
+char* join(char arr[][50]) {
+    static char result[300];
+    result[0] = '\0';
+
+    int i = 0;
+    while (arr[i][0] != '\0') {
+        strcat(result, arr[i]);
+
+        if (arr[i + 1][0] != '\0') 
+            strcat(result, " ");
+
+        i++;
+    }
+
+    return result;
+}
+
+void say_exec(command_t* cmd, int* message_count, char messages[MAX_MSGS][MAX_LEN]){
+    char * result = join(cmd->args);
+    strcpy(messages[message_count], result);
+    
 }

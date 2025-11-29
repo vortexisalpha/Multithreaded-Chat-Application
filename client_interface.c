@@ -1,14 +1,12 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include "udp.h"
+#include "cmd.h"
 #include "client_types.h"
 #include <pthread.h>
-#include "cmd.h"
 
 #define SAFETY_PORT 10000
-#define MAX_MSGS 100
-#define MAX_LEN 1024
+
 
 void clear_screen() {
     printf("\033[2J\033[H"); // Clear screen + move cursor to top-left
@@ -46,11 +44,9 @@ void connect_to_server(char message[], client_t * client){
     } 
 
     strcpy(client->name, message);
-    client->port = ntohs(responder_addr.sin_port);
     client->server_addr = server_addr;
     client->responder_addr = responder_addr;
     client->sd = sd;
-    printf("%i\n",client->port);
 }
 
 void message_flash(char * message){
@@ -243,6 +239,7 @@ void join_with_spaces(char *tokenised_command[MAX_COMMAND_LEN], char *joint_msg)
 }
 */
 void execute_server_command(comand_t cmd){
+    case
 }
 
 void *cli_queue_manager(void* arg){
