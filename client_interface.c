@@ -227,8 +227,8 @@ void *chat_display_thread(void *arg){
     
         if (strcmp(input, ":q") == 0) break; // replace this with end_all_threads() function
     }
-
 }
+
 /*
 void join_with_spaces(char *tokenised_command[MAX_COMMAND_LEN], char *joint_msg) {
     joint_msg[0] = '\0';
@@ -243,7 +243,6 @@ void join_with_spaces(char *tokenised_command[MAX_COMMAND_LEN], char *joint_msg)
 }
 */
 void execute_server_command(comand_t cmd){
-    
 }
 
 void *cli_queue_manager(void* arg){

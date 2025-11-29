@@ -40,13 +40,37 @@ typedef struct {
 } cli_listener_args_t;
 
 
+void setup_cli_listner_args(cli_listener_args_t* args, client_t * client, Queue* task_queue){
+    args->client = client;
+    args->task_queue = task_queue;
+}
+
 typedef struct{ 
     client_t * client;
-    messages[MAX_MSGS][MAX_LEN];
+    char messages[MAX_MSGS][MAX_LEN];
     int * message_count;
 } chat_display_args_t;
+
 
 typedef struct {
     client_t * client;
     Queue * task_queue;
 } cli_queue_manager_args_t;
+
+
+
+
+///cmds:///
+
+//tbc... figure out what you need in here
+typedef struct {
+    int sd;
+    command_t* command;
+    struct sockaddr_in* from_addr;
+    client_node_t **head;
+    client_node_t **tail;
+} execute_command_args_t;
+
+void setup_execute_command_args(execute_command_args_t * args){
+    args->
+}

@@ -69,3 +69,4 @@ void command_handler(command_t *command, char *args[]){
         8. kick$ client_name (arg0~1)
     */
 }
+

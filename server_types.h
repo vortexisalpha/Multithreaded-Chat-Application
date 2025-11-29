@@ -115,3 +115,18 @@ typedef struct {
 } chat_history_t;
 
 chat_history_t history;
+
+///cmds:///
+
+//tbc... figure out what you need in here
+typedef struct {
+    int sd;
+    command_t* command;
+    struct sockaddr_in* from_addr;
+    client_node_t **head;
+    client_node_t **tail;
+} execute_command_args_t;
+
+void setup_execute_command_args(execute_command_args_t * args){
+    args->
+}
