@@ -122,3 +122,23 @@ void say_exec(command_t* cmd, int* message_count, char (*messages)[MAX_LEN], pth
     pthread_cond_signal(message_update_cond);  //signal that messages were updated
     pthread_mutex_unlock(message_mutex);
 }
+
+void mute_exec(command_t* cmd, client_t * client, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
+    pthread_mutex_lock(message_mutex);
+
+    char* username = cmd->args[0];
+    insert(client->mute_table, username);
+
+    pthread_cond_signal(message_update_cond);
+    pthread_mutex_unlock(message_mutex);
+}
+
+void unmute_exec(command_t* cmd, client_t * client, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
+    pthread_mutex_lock(message_mutex);
+
+    const char* username = cmd->args[0];
+    remove_key(client->mute_table, username);
+
+    pthread_cond_signal(message_update_cond);
+    pthread_mutex_unlock(message_mutex);
+}
