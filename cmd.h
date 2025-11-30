@@ -21,6 +21,7 @@ typedef struct {
 } command_t;
 
 void command_handler(command_t *command, char *args[]){
+    if (args == NULL || args[0] == NULL) return;
     if (strcmp(args[0], "conn") == 0) {
         command->kind = CONN;
     } else if (strcmp(args[0], "say") == 0) {
