@@ -217,7 +217,7 @@ void *chat_display(void *arg){
         pthread_cond_wait(chat_args->messages_cond, chat_args->messages_mutex);
         
         //redraw entire screen from top
-        printf("\033[2J\033[H"); // Clear and go to top
+        printf("\033[2J\033[H"); //clear and go to top
         
         //draw header
         printf("Chat Messages:\n\n");
@@ -232,7 +232,6 @@ void *chat_display(void *arg){
             printf("%s\n", chat_args->messages[i]);
         }
         
-        //draw separator and prompt right after messages
         printf("\n---------------------\n");
         printf("> ");
         fflush(stdout);
@@ -275,11 +274,16 @@ void *user_input(void *arg){
 }
 
 //execute server response. e.g say command
-void execute_server_command(command_t *cmd, int * message_count, char (* messages)[MAX_LEN], pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
+void execute_server_command(command_t *cmd, client_t * client,  int * message_count, char (* messages)[MAX_LEN], pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     switch(cmd->kind){
         case SAY:
             say_exec(cmd, message_count, messages, message_mutex, message_update_cond);
             break;
+        case MUTE:
+            mute_exec(cmd, client, message_mutex, message_update_cond);
+            break;
+        case UNMUTE:
+            unmute_exec(cmd, client, message_mutex, message_update_cond);
         default:
             break;
     }
@@ -299,7 +303,7 @@ void *cli_queue_manager(void* arg){
         char client_request[BUFFER_SIZE];
         command_t cmd;
         command_handler(&cmd, tokenised_command); // fill out cur_command
-        execute_server_command(&cmd, qm_args->message_count, qm_args->messages, qm_args->messages_mutex, qm_args->messages_cond);
+        execute_server_command(&cmd, client, qm_args->message_count, qm_args->messages, qm_args->messages_mutex, qm_args->messages_cond);
     }
     return NULL;
 }
