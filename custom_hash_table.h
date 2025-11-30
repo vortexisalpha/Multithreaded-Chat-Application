@@ -13,7 +13,6 @@ typedef struct node {
     struct node *next;
 } hash_node_t;
 
-
 unsigned int hash(const char *key) {
     unsigned long hash_val = 5381;
     int c;
@@ -23,7 +22,7 @@ unsigned int hash(const char *key) {
     return hash_val % TABLE_SIZE;
 }
 
-void insert(hash_node_t * table[TABLE_SIZE], const char *key, bool value) {
+void insert(hash_node_t **table, const char *key, bool value) {
     unsigned int idx = hash(key);
     hash_node_t *n = (hash_node_t *)malloc(sizeof(hash_node_t));
     n->key = strdup(key);
@@ -32,7 +31,7 @@ void insert(hash_node_t * table[TABLE_SIZE], const char *key, bool value) {
     table[idx] = n;
 }
 
-bool lookup(hash_node_t * table[TABLE_SIZE], const char *key, bool *found) {
+bool lookup(hash_node_t **table, const char *key, bool *found) {
     unsigned int idx = hash(key);
     hash_node_t *n = table[idx];
     while (n) {
