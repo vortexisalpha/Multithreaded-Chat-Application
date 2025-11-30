@@ -284,9 +284,22 @@ void execute_server_command(command_t *cmd, client_t * client,  int * message_co
             break;
         case UNMUTE:
             unmute_exec(cmd, client, message_mutex, message_update_cond);
+            break;
         default:
             break;
     }
+}
+
+//handles each command
+void* handle_cmd_and_execute_client_side(void* args){
+    cli_queue_manager_args_t* qm_args = (cli_queue_manager_args_t *)arg;
+
+    client_t* client = qm_args->client;
+    
+    char client_request[BUFFER_SIZE];
+    command_t cmd;
+    command_handler(&cmd, tokenised_command); // fill out cur_command
+    execute_server_command(&cmd, client, qm_args->message_count, qm_args->messages, qm_args->messages_mutex, qm_args->messages_cond);
 }
 
 //queue manager thread
@@ -300,10 +313,9 @@ void *cli_queue_manager(void* arg){
 
         q_pop(qm_args->task_queue, tokenised_command, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
 
-        char client_request[BUFFER_SIZE];
-        command_t cmd;
-        command_handler(&cmd, tokenised_command); // fill out cur_command
-        execute_server_command(&cmd, client, qm_args->message_count, qm_args->messages, qm_args->messages_mutex, qm_args->messages_cond);
+        pthread_t t;
+        pthread_create(&t, NULL, handle_cmd_and_execute_client_side, qm_args)
+        pthread_detatch(t);
     }
     return NULL;
 }

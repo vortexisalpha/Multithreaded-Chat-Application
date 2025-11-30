@@ -1,5 +1,5 @@
-#ifndef COMMAND_HEADER
-#define COMMAND_HEADER
+#ifndef COMMAND_H
+#define COMMAND_H
 
 #include "udp.h"
 #define MAX_MESSAGE 256
