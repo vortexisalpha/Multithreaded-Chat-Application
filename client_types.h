@@ -1,22 +1,26 @@
 #include "udp.h"
 #include "queue.h"
 #include "cmd.h"
+#include "custom_hash_table.h"
+
 
 //client
 typedef struct {
     char name[NAME_SIZE];
     bool connected;
-
     int sd;
     struct sockaddr_in server_addr;
     struct sockaddr_in responder_addr;
-
+    hash_node_t *mute_table[TABLE_SIZE];
 } client_t;
 
 
 void setup_client(client_t* client){
     client->sd = 0;
     client->connected = false;
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        client->mute_table[i] = NULL;
+    }
 }
 
 void connect_command(client_t* client, char name[NAME_SIZE]){
