@@ -270,10 +270,10 @@ void *user_input(void *arg){
 }
 
 //execute server response. e.g say command
-void execute_server_command(command_t *cmd, int * message_count, char (* messages)[MAX_LEN], pthread_mutex_t* mutex, pthread_cond_t* cond){
+void execute_server_command(command_t *cmd, int * message_count, char (* messages)[MAX_LEN], pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     switch(cmd->kind){
         case SAY:
-            say_exec(cmd, message_count, messages, mutex, cond);
+            say_exec(cmd, message_count, messages, message_mutex, message_update_cond);
             break;
         default:
             break;
@@ -287,7 +287,7 @@ void *cli_queue_manager(void* arg){
     
     client_t * client = qm_args->client;
     while(1){
-        char * tokenised_command[MAX_COMMAND_LEN] = {NULL};
+        char * tokenised_command[MAX_COMMAND_LEN] = {NULL}; 
 
         q_pop(qm_args->task_queue, tokenised_command, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
 

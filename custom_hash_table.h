@@ -5,15 +5,15 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define TABLE_SIZE 1024
+#define TABLE_SIZE 100
 
 typedef struct node {
     char *key;
     bool value;
     struct node *next;
-} node_t;
+} hash_node_t;
 
-node_t *table[TABLE_SIZE] = {NULL};
+hash_node_t *table[TABLE_SIZE] = {NULL};
 
 unsigned int hash(const char *key) {
     unsigned long hash_val = 5381;
@@ -24,18 +24,18 @@ unsigned int hash(const char *key) {
     return hash_val % TABLE_SIZE;
 }
 
-void insert(const char *key, bool value) {
+void insert(hash_node_t * table[TABLE_SIZE], const char *key, bool value) {
     unsigned int idx = hash(key);
-    node_t *n = (node_t *)malloc(sizeof(node_t));
+    hash_node_t *n = (hash_node_t *)malloc(sizeof(hash_node_t));
     n->key = strdup(key);
     n->value = value;
     n->next = table[idx];
     table[idx] = n;
 }
 
-bool lookup(const char *key, bool *found) {
+bool lookup(hash_node_t * table[TABLE_SIZE], const char *key, bool *found) {
     unsigned int idx = hash(key);
-    node_t *n = table[idx];
+    hash_node_t *n = table[idx];
     while (n) {
         if (strcmp(n->key, key) == 0) {
             if (found) *found = true;
