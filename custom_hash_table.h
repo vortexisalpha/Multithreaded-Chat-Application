@@ -12,6 +12,7 @@ typedef struct node {
     struct node *next;
 } hash_node_t;
 
+//ref: https://stackoverflow.com/questions/7666509/hash-function-for-string
 unsigned int hash(const char *key) {
     unsigned long hash_val = 5381;
     int c;
