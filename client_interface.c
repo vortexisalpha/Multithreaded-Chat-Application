@@ -61,29 +61,6 @@ void message_flash(char * message){
     }
 }
 
-void send_signal(client_t * client, char * client_request){
-    int rc = udp_socket_write(client->sd, &client->server_addr, client_request, BUFFER_SIZE);
-    char * server_response;
-    if (rc > 0)
-    {
-        int rc = udp_socket_read(client->sd, &client->responder_addr, server_response, BUFFER_SIZE);
-        printf("server_response: %s", server_response);
-    } 
-    else{
-        printf("Error! Message not sent!\n");
-    }
-}
-
-void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
-    /*if (!client->connected){
-        message_flash("Client Not Connected!");
-        return;
-    }*/
-   
-    // snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
-    (*client_messages_count)++;
-}
-
 /*
 
 void sayto(char who[], char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
@@ -113,71 +90,6 @@ void rename(char name[], char client_messages[MAX_MSGS][MAX_LEN], int * client_m
 }
 */ 
 
-bool disconnect(){
-    printf("You have disconnected\n"); 
-    return true; 
-}
-
-
-
-void execute_command(command_t *command, client_t *client, char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
-    int argsc = 1; 
-    char display_to_client[MAX_LEN]; 
-    switch(command->kind){
-        case CONN:
-            connect_to_server(command->args[0], client);
-            break;
-        case SAY:
-            global_say(command->args[0], client_messages, client_messages_count, client);
-            break; 
-        case SAYTO:
-            argsc = 2; 
-            // if we want to store the activity, use snprintf instead of printf, 
-            // and load it into the activity log (in client_types.h)
-            printf("You: (private to %s) %s\n", command->args[0], command->args[1]); 
-            // strncat(display_to_client, "You: (private to %s) %s\n", sizeof(display_to_client)-strlen(display_to_client)); 
-            break; 
-        case MUTE:
-            printf("You have muted %s\n", command->args[0]);  
-            break; 
-        case UNMUTE:
-            printf("You have unmuted %s\n", command->args[0]);  
-            break; 
-        case RENAME:
-            // could fail (if there is already a same name)
-            // come back later and fix the unique name problem
-            printf("You have requested to rename to %s\n", command->args[0]);  
-            break; 
-        case DISCONN:
-            disconnect(); 
-
-        default:
-            printf("Error, command type is undefined\n"); 
-        
-    }
-    if((command->kind != CONN) && (command->kind != DISCONN)){
-        char send_message[MAX_LEN];
-        strncat(send_message, (char*) command->kind, sizeof(send_message)-strlen(send_message)-1); 
-        strncat(send_message, " ", sizeof(send_message)-strlen(send_message)-1); 
-        for(int i=0; i<argsc; i++){
-            /*
-            Error: The write_socket can only send a string, not an array of string
-            strncpy(client_messages[*client_messages_count], command->args[i], MAX_LEN-1); 
-            *client_messages_count ++; 
-            */ 
-           strncat(send_message, command->args[i],  sizeof(send_message)-strlen(send_message)-1); 
-           strncat(send_message, " ", sizeof(send_message)-strlen(send_message)-1); 
-
-
-        }
-        strncat(send_message, "\0", sizeof(send_message)-strlen(send_message)-1); 
-        // printf("%s\n", send_message); 
-        send_signal(client, send_message); 
-    }
-    
-}
-
-
 //reads socket and appends to queue
 void *cli_listener(void *arg){
     cli_listener_args_t* listener_args = (cli_listener_args_t*)arg;
@@ -195,6 +107,7 @@ void *cli_listener(void *arg){
             q_append(listener_args->task_queue, server_response, NULL); // this includes queue full sleep for thread
         }
     }
+    return NULL;
 }
 
 // chat display thread with adaptive growing display
@@ -369,7 +282,7 @@ int main(int argc, char *argv[])
     pthread_create(&chat_display_thread, NULL, chat_display, chat_display_args);
     pthread_detach(chat_display_thread);
 
-    //spawn user input thread
+    //spawn user input sender thread
     pthread_t user_input_thread;
     user_input_args_t *user_input_args = malloc(sizeof(user_input_args_t));
     setup_user_input_args(user_input_args, &client);
