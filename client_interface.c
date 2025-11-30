@@ -206,12 +206,10 @@ void execute_server_command(command_t *cmd, client_t * client,  int * message_co
 //handles each command
 void* handle_cli_side_cmd(void* args){
     handle_cli_side_cmd_args_t* cli_side_args = (handle_cli_side_cmd_args_t *)args;
-
-    client_t* client = cli_side_args->client;
     
     command_t cmd;
     command_handler(&cmd, cli_side_args->tokenised_command);
-    execute_server_command(&cmd, client, cli_side_args->message_count, cli_side_args->messages, cli_side_args->messages_mutex, cli_side_args->messages_cond);
+    execute_server_command(&cmd, cli_side_args->client, cli_side_args->message_count, cli_side_args->messages, cli_side_args->messages_mutex, cli_side_args->messages_cond);
     
     //clean up
     if (cli_side_args->tokenised_command != NULL) {
@@ -235,6 +233,7 @@ void *cli_queue_manager(void* arg){
         char * tokenised_command_temp[MAX_COMMAND_LEN] = {NULL}; 
 
         q_pop(qm_args->task_queue, tokenised_command_temp, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
+        //POTENTIAL RACE CONDITION CONSERN: THREAD SWITCH HERE AND QUEUE[i] REPLACED REQUIRES FIXING
 
         //copy the tokenised_command to heap memory to avoid race condition
         char ** tokenised_command_copy = malloc(MAX_COMMAND_LEN * sizeof(char*));
