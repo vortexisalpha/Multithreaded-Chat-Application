@@ -92,6 +92,23 @@ void setup_cli_queue_manager_args(cli_queue_manager_args_t* args, client_t * cli
     args->messages_cond = message_update_cond;
 }
 
+typedef struct {
+    client_t * client;
+    char (*messages)[MAX_LEN];
+    int * message_count;
+    pthread_mutex_t * messages_mutex;
+    pthread_cond_t * messages_cond;
+    char * tokenised_command[MAX_COMMAND_LEN];
+} handle_cli_side_cmd_args_t;
+
+void setup_handle_cli_side_cmd_args(handle_cli_side_cmd_args_t* args, client_t * client, char (*messages)[MAX_LEN], int * message_count, pthread_mutex_t * messages_mutex, pthread_cond_t * messages_cond, char * tokenised_command[MAX_COMMAND_LEN]){
+    args->client = client;
+    args->messages = messages;
+    args->message_count = message_count;
+    args->messages_mutex = message_mutex;
+    args->messages_cond = message_update_cond;
+    args->tokenised_command = tokenised_command;
+}
 ///cmds:///
 
 //tbc... figure out what you need in here
