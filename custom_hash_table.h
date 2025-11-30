@@ -13,7 +13,6 @@ typedef struct node {
     struct node *next;
 } hash_node_t;
 
-hash_node_t *table[TABLE_SIZE] = {NULL};
 
 unsigned int hash(const char *key) {
     unsigned long hash_val = 5381;
