@@ -291,15 +291,25 @@ void execute_server_command(command_t *cmd, client_t * client,  int * message_co
 }
 
 //handles each command
-void* handle_cmd_and_execute_client_side(void* args){
-    cli_queue_manager_args_t* qm_args = (cli_queue_manager_args_t *)arg;
+void* handle_cli_side_cmd(void* args){
+    handle_cli_side_cmd_args_t* qm_args = (handle_cli_side_cmd_args_t *)args;
 
     client_t* client = qm_args->client;
     
-    char client_request[BUFFER_SIZE];
     command_t cmd;
-    command_handler(&cmd, tokenised_command); // fill out cur_command
+    command_handler(&cmd, qm_args->tokenised_command);
     execute_server_command(&cmd, client, qm_args->message_count, qm_args->messages, qm_args->messages_mutex, qm_args->messages_cond);
+    
+    //clean up
+    if (qm_args->tokenised_command != NULL) {
+        for (int i = 0; i < MAX_COMMAND_LEN && qm_args->tokenised_command[i] != NULL; i++) {
+            free(qm_args->tokenised_command[i]);
+        }
+        free(qm_args->tokenised_command);
+    }
+    free(qm_args);
+    
+    return NULL;
 }
 
 //queue manager thread
@@ -309,13 +319,26 @@ void *cli_queue_manager(void* arg){
     
     client_t * client = qm_args->client;
     while(1){
-        char * tokenised_command[MAX_COMMAND_LEN] = {NULL}; 
+        char * tokenised_command_temp[MAX_COMMAND_LEN] = {NULL}; 
 
-        q_pop(qm_args->task_queue, tokenised_command, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
+        q_pop(qm_args->task_queue, tokenised_command_temp, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
+
+        // Deep copy the tokenised_command to heap memory to avoid race condition
+        char ** tokenised_command_copy = malloc(MAX_COMMAND_LEN * sizeof(char*));
+        for (int i = 0; i < MAX_COMMAND_LEN; i++) {
+            if (tokenised_command_temp[i] != NULL) {
+                tokenised_command_copy[i] = malloc(strlen(tokenised_command_temp[i]) + 1);
+                strcpy(tokenised_command_copy[i], tokenised_command_temp[i]);
+            } else {
+                tokenised_command_copy[i] = NULL;
+            }
+        }
 
         pthread_t t;
-        pthread_create(&t, NULL, handle_cmd_and_execute_client_side, qm_args)
-        pthread_detatch(t);
+        handle_cli_side_cmd_args_t *handle_cli_side_cmd_args = malloc(sizeof(handle_cli_side_cmd_args_t));
+        setup_handle_cli_side_cmd_args(handle_cli_side_cmd_args, client, qm_args->messages, qm_args->message_count, qm_args->messages_mutex, qm_args->messages_cond, tokenised_command_copy);
+        pthread_create(&t, NULL, handle_cli_side_cmd, handle_cli_side_cmd_args);
+        pthread_detach(t);
     }
     return NULL;
 }

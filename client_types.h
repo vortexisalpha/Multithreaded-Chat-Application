@@ -98,15 +98,15 @@ typedef struct {
     int * message_count;
     pthread_mutex_t * messages_mutex;
     pthread_cond_t * messages_cond;
-    char * tokenised_command[MAX_COMMAND_LEN];
+    char ** tokenised_command;  // pointer to dynamically allocated array
 } handle_cli_side_cmd_args_t;
 
-void setup_handle_cli_side_cmd_args(handle_cli_side_cmd_args_t* args, client_t * client, char (*messages)[MAX_LEN], int * message_count, pthread_mutex_t * messages_mutex, pthread_cond_t * messages_cond, char * tokenised_command[MAX_COMMAND_LEN]){
+void setup_handle_cli_side_cmd_args(handle_cli_side_cmd_args_t* args, client_t * client, char (*messages)[MAX_LEN], int * message_count, pthread_mutex_t * messages_mutex, pthread_cond_t * messages_cond, char ** tokenised_command){
     args->client = client;
     args->messages = messages;
     args->message_count = message_count;
-    args->messages_mutex = message_mutex;
-    args->messages_cond = message_update_cond;
+    args->messages_mutex = messages_mutex;
+    args->messages_cond = messages_cond;  // Fixed: was message_update_cond
     args->tokenised_command = tokenised_command;
 }
 ///cmds:///
