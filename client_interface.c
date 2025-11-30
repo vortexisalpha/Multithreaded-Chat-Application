@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <sys/select.h>
+#include "custom_hash_table.h"
 #include "udp.h"
 #include "cmd.h"
 #include "client_types.h"
@@ -221,8 +222,9 @@ void *chat_display(void *arg){
         //draw header
         printf("Chat Messages:\n\n");
         
-        //print all messages (grows dynamically)
+        //print all messages
         int total_messages = *chat_args->message_count;
+        hash_node_t **mute_table = chat_args->client->mute_table;
         for (int i = 0; i < total_messages; i++){
             printf("%s\n", chat_args->messages[i]);
         }

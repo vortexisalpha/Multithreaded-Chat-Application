@@ -9,7 +9,6 @@
 
 typedef struct node {
     char *key;
-    bool value;
     struct node *next;
 } hash_node_t;
 
@@ -22,27 +21,75 @@ unsigned int hash(const char *key) {
     return hash_val % TABLE_SIZE;
 }
 
-void insert(hash_node_t **table, const char *key, bool value) {
-    unsigned int idx = hash(key);
-    hash_node_t *n = (hash_node_t *)malloc(sizeof(hash_node_t));
-    n->key = strdup(key);
-    n->value = value;
-    n->next = table[idx];
-    table[idx] = n;
-}
 
-bool lookup(hash_node_t **table, const char *key, bool *found) {
+void insert(hash_node_t **table, const char *key) {
+
     unsigned int idx = hash(key);
     hash_node_t *n = table[idx];
     while (n) {
         if (strcmp(n->key, key) == 0) {
-            if (found) *found = true;
-            return n->value;
+            return;
         }
         n = n->next;
     }
-    if (found) *found = false;
-    return false; 
+    
+    //add new node
+    hash_node_t *new_node = (hash_node_t *)malloc(sizeof(hash_node_t));
+    new_node->key = strdup(key);
+    new_node->next = table[idx];
+    table[idx] = new_node;
+}
+
+//check if key exists in set
+bool contains(hash_node_t **table, const char *key) {
+    unsigned int idx = hash(key);
+    hash_node_t *n = table[idx];
+    while (n) {
+        if (strcmp(n->key, key) == 0) {
+            return true;
+        }
+        n = n->next;
+    }
+    return false;
+}
+
+//remove key from set
+void remove_key(hash_node_t **table, const char *key) {
+    unsigned int idx = hash(key);
+    hash_node_t *n = table[idx];
+    hash_node_t *prev = NULL;
+    
+    while (n) {
+        if (strcmp(n->key, key) == 0) {
+            if (prev) {
+                prev->next = n->next;
+            } else {
+                table[idx] = n->next;
+            }
+            free(n->key);
+            free(n);
+            return;
+        }
+        prev = n;
+        n = n->next;
+    }
+}
+
+//extract username from message format "username: message"
+void extract_username(const char *message, char *username, int max_len) {
+    const char *colon = strchr(message, ':');
+    
+    if (colon != NULL) {
+        int len = colon - message;
+        if (len > 0 && len < max_len) {
+            strncpy(username, message, len);
+            username[len] = '\0';
+        } else {
+            username[0] = '\0';
+        }
+    } else {
+        username[0] = '\0';
+    }
 }
 
 #endif
