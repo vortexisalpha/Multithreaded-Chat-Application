@@ -146,7 +146,7 @@ void reader_checkin(Monitor_t* client_linkedList){
         client_linkedList->WR--; 
     }
     client_linkedList->AR++; 
-    pthread_mutex_lock(&client_linkedList->lock); 
+    pthread_mutex_unlock(&client_linkedList->lock); 
 }
 
 void reader_checkout(Monitor_t* client_linkedList){

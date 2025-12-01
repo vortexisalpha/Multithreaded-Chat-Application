@@ -43,7 +43,7 @@ void *listener(void *arg){
         int rc = udp_socket_read(listener_args->sd, &client_address, client_request, BUFFER_SIZE);
 
         if (rc > 0){
-            q_append(listener_args->task_queue, client_request, client_address); // this includes queue full sleep for thread
+            q_append(listener_args->task_queue, client_request, &client_address); // this includes queue full sleep for thread
         }
     }
 }
@@ -111,7 +111,7 @@ void *sayto(void *args){
 
     // string making
     char server_response[MAX_MESSAGE]; 
-    snprintf(server_response, MAX_MESSAGE, "%s: %s", from_who->client_name, message); 
+    snprintf(server_response, MAX_MESSAGE, "say$ %s:(private message) %s", from_who->client_name, message); 
     int rc = udp_socket_write(cmd_args->sd, &(client->client_address), server_response, MAX_MESSAGE);
 
 
@@ -127,20 +127,21 @@ void *sayto(void *args){
 void *say(void *args){
     // Example: SAY Hello everyone!
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    *cmd_args->command->args[1] = *cmd_args->command->args[0]; 
+    char* message = cmd_args->command->args[0]; 
     client_node_t* node = *(cmd_args->head); 
+    client_node_t* from_who; 
+    reader_checkin(cmd_args->client_linkedList);
+    from_who = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
+    reader_checkout(cmd_args->client_linkedList); 
+    reader_checkin(cmd_args->client_linkedList); 
     while(node != NULL){
         pthread_t t; 
-        execute_command_args_t* new_cmd_args = malloc(sizeof(execute_command_args_t)); 
-        new_cmd_args = cmd_args; 
-        reader_checkin(cmd_args->client_linkedList); 
-        strcpy(new_cmd_args->command->args[0], node->client_name);
-        pthread_create(&t, NULL, sayto, new_cmd_args);
-        pthread_detach(t); 
         node = node->next; 
-        reader_checkout(cmd_args->client_linkedList);
-        // STARVATION OF THE WRITER THREADS?
+        char server_response[MAX_MESSAGE]; 
+        snprintf(server_response, MAX_MESSAGE, "say$ %s:(private message) %s", from_who->client_name, message); 
+        int rc = udp_socket_write(cmd_args->sd, &node->client_address, server_response, MAX_MESSAGE); 
     }
+    reader_checkout(cmd_args->client_linkedList);
     
     /*
     char* message = cmd_args->command->args[1];     
