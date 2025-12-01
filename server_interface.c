@@ -118,6 +118,12 @@ void *sayto(void *args){
      
 }
 
+//sayto:
+//snprintf(server_response, MAX_MESSAGE, "say$ %s:(private) %s", from_who->client_name, message); 
+//say:
+//snprintf(server_response, MAX_MESSAGE, "say$ %s: %s", from_who->client_name, message); 
+
+
 void *say(void *args){
     // Example: SAY Hello everyone!
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
