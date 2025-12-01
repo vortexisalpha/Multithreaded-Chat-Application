@@ -1,8 +1,10 @@
 #include "cmd.h" // includes udp.h
 #include "queue.h"
-#define MAX_MUTED 100
 #define MAX_HISTORY 20 
+#define MAX_NAMES 50
+#define MAX_NAME_LEN 30
 #define MAX_LEN  256
+#define MAX_THREADS 128
 
 #define BUFFER_SIZE 1024
 #define SERVER_PORT 12000
@@ -14,6 +16,20 @@ typedef struct client_node{
     struct sockaddr_in client_address;
     char client_name[NAME_SIZE];
 } client_node_t;
+
+
+typedef struct{
+    int AR; // active reader
+    int WR; // waiting reader
+
+    int AW; // active writer
+    int WW; // waiting writer
+
+    pthread_mutex_t lock;
+    pthread_cond_t cond_read; 
+    pthread_cond_t cond_write;
+    client_node_t *client_head;
+} Monitor_t; 
 
 void add_client_to_list(client_node_t **head,client_node_t **tail, struct sockaddr_in *addr, char name[NAME_SIZE]){
     client_node_t * new_node = malloc(sizeof(client_node_t));
@@ -35,23 +51,27 @@ void add_client_to_list(client_node_t **head,client_node_t **tail, struct sockad
 }
 
 
-void remove_client_from_list(client_node_t *head, char name[NAME_SIZE]){
+struct sockaddr_in* remove_client_from_list(client_node_t *head, char name[NAME_SIZE]){
     client_node_t *iter = head; 
     client_node_t *last_node; 
+    struct sockaddr_in* client_address; 
     while(iter != NULL){
+        if(iter == NULL){
+            printf("Error. Client is not found in linked list\n");
+            return NULL; 
+        }
         if(strcmp(iter->client_name, name) == 0){
             printf("Remove client: %s\n", name);
             last_node->next = iter->next; 
+            client_address = &iter->client_address; 
             free(iter); 
-            break;
+            break; 
         }
         last_node = iter; 
         iter = iter->next;
     }   
+    return client_address; 
 
-    if(iter == NULL){
-        printf("Error. Client is not found in linked list\n");
-    }
 
 }
 
@@ -62,14 +82,16 @@ typedef struct {
     struct sockaddr_in* from_addr;
     client_node_t **head;
     client_node_t **tail;
+    Monitor_t* client_linkedList; 
 } execute_command_args_t;
 
-void setup_command_args(execute_command_args_t* args, int sd, command_t* command, struct sockaddr_in* from_addr,client_node_t **head, client_node_t **tail){
+void setup_command_args(execute_command_args_t* args, int sd, command_t* command, struct sockaddr_in* from_addr,client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList){
     args->sd = sd;
     args->command = command;
     args->from_addr = from_addr;
     args->head = head;
     args->tail = tail;
+    args->client_linkedList = client_linkedList; 
 }
 
 // listner thread argument struct
@@ -84,26 +106,79 @@ void setup_listener_args(listener_args_t* args, int sd, Queue* q){
 }
 
 //queue manager thread argument struct
+//queue manager is essentially a thread-pool configuration
 typedef struct {
     Queue * task_queue;
     int sd;
     client_node_t **head;
     client_node_t **tail;
+    Monitor_t* client_linkedList; 
+
+    // add worker constraints
+    // worker constraints
+    int active_worker; 
+    pthread_cond_t cond_worker; 
+    pthread_mutex_t pool_lock; 
+
 } queue_manager_args_t;
 
-void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, client_node_t **head, client_node_t **tail){
+void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList){
     args->task_queue = q;
     args->sd = sd;
     args->head = head;
     args->tail = tail;
+    args->client_linkedList = client_linkedList; 
 }
 
 // muted chat buffer, local to each user
 // initialise using new
 typedef struct {
-    char messages[MAX_MUTED][MAX_LEN];
-    int count;
-} muted_buffer_t;
+    char messages[MAX_NAMES][MAX_NAME_LEN]; 
+} muted_namelist_t;
+
+// Monitor subroutines
+// reader check-in and check-out routine
+void reader_checkin(Monitor_t* client_linkedList){
+    pthread_mutex_lock(&client_linkedList->lock); 
+    while((client_linkedList->AW + client_linkedList->WW) > 0){
+        client_linkedList->WR++; 
+        pthread_cond_wait(&client_linkedList->cond_read, &client_linkedList->lock); 
+        client_linkedList->WR--; 
+    }
+    client_linkedList->AR++; 
+    pthread_mutex_lock(&client_linkedList->lock); 
+}
+
+void reader_checkout(Monitor_t* client_linkedList){
+    pthread_mutex_lock(&client_linkedList->lock); 
+    client_linkedList->AR--;  
+    if(client_linkedList->AR == 0 && client_linkedList->WW > 0){
+        pthread_cond_signal(&client_linkedList->cond_write); // wake up ONE writer
+    }
+    pthread_mutex_unlock(&client_linkedList->lock); 
+}
+
+// writer check-in and check-out routine
+void writer_checkin(Monitor_t* client_linkedList){
+    pthread_mutex_lock(&client_linkedList->lock); 
+    while((client_linkedList->AW + client_linkedList->AR)>0){
+        client_linkedList->WW ++;
+        pthread_cond_wait(&client_linkedList->cond_write, &client_linkedList->lock); 
+    }
+    client_linkedList->AW++;
+    pthread_mutex_unlock(&client_linkedList->lock); 
+}
+
+void writer_checkout(Monitor_t* client_linkedList){
+    pthread_mutex_lock(&client_linkedList->lock); 
+    client_linkedList->AW--; 
+    if (client_linkedList->WW > 0){ // Give priority to writers
+        pthread_cond_signal(&client_linkedList->cond_write);// Wake up ONE writer
+    } else if (client_linkedList->WR > 0) { // Otherwise, wake reader
+        pthread_cond_broadcast(&client_linkedList->cond_read); // Wake ALL readers 
+        }
+    pthread_mutex_unlock(&client_linkedList->lock);
+}
 
 // we need a chat history (slightly different from a queue) for (1) proposed extension (2) muted chat perservance
 // this is a global struct (which I am not sure if the data structure is optimal)?
@@ -111,7 +186,24 @@ typedef struct {
     char messages[MAX_HISTORY][MAX_LEN];
     int count;
     pthread_mutex_t mutex;
+    pthread_cond_t ok_to_read; 
+    pthread_cond_t ok_to_write; 
 } chat_history_t;
 
-chat_history_t history;
+
+void worker_thread_checkin(queue_manager_args_t* qm_args){
+    pthread_mutex_lock(&qm_args->pool_lock);
+    while(qm_args->active_worker >= MAX_THREADS){
+        pthread_cond_wait(&qm_args->cond_worker, &qm_args->pool_lock); 
+    }
+    qm_args->active_worker++; 
+    pthread_mutex_unlock(&qm_args->pool_lock); 
+}
+
+void worker_thread_checkout(queue_manager_args_t* qm_args){
+    pthread_mutex_lock(&qm_args->pool_lock); 
+    qm_args->active_worker--; 
+    pthread_cond_signal(&qm_args->cond_worker); 
+    pthread_mutex_unlock(&qm_args->pool_lock); 
+}
 
