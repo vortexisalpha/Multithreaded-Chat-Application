@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
         char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
 
         // Demo code (remove later)
-        printf("Server is listening on port %d\n", SERVER_PORT);
+        //printf("Server is listening on port %d\n", SERVER_PORT);
 
         // Variable to store incoming client's IP address and port
         struct sockaddr_in client_address;
@@ -34,13 +34,8 @@ int main(int argc, char *argv[])
         // Successfully received an incoming request
         if (rc > 0)
         {
-            // Demo code (remove later)
-            strcpy(server_response, "Hi, the server has received: ");
-            strcat(server_response, client_request);
-            strcat(server_response, "\n");
-            char* port_n;
-            sprintf(port_n, "client port: %d", ntohs(client_address.sin_port));
-            strcat(server_response, port_n);
+            // Demo code: send a SAY command back to client
+            strcpy(server_response, "say$ Server received your message!");
 
             // This function writes back to the incoming client,
             // whose address is now available in client_address, 
@@ -49,7 +44,7 @@ int main(int argc, char *argv[])
             rc = udp_socket_write(sd, &client_address, server_response, BUFFER_SIZE);
 
             // Demo code (remove later)
-            printf("Request served...\n");
+            //printf("Request served...\n");
         }
     }
 

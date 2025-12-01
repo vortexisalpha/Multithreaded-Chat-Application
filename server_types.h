@@ -6,6 +6,9 @@
 #define MAX_LEN  256
 #define MAX_THREADS 128
 
+#define BUFFER_SIZE 1024
+#define SERVER_PORT 12000
+
 // linked list node struct
 
 typedef struct client_node{

@@ -1,7 +1,7 @@
-#include "udp.h"
+#ifndef COMMAND_H
+#define COMMAND_H
 
-#define MAX_CMD_SIZE 3
-#define NAME_SIZE 20
+#include "udp.h"
 #define MAX_MESSAGE 256
 
 typedef enum {
@@ -21,6 +21,7 @@ typedef struct {
 } command_t;
 
 void command_handler(command_t *command, char *args[]){
+    if (args == NULL || args[0] == NULL) return;
     if (strcmp(args[0], "conn") == 0) {
         command->kind = CONN;
     } else if (strcmp(args[0], "say") == 0) {
@@ -69,3 +70,4 @@ void command_handler(command_t *command, char *args[]){
         8. kick$ client_name (arg0~1)
     */
 }
+#endif
