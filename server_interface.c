@@ -2,6 +2,14 @@
 #include <stdlib.h>
 #include "server_types.h"
 
+// 1. The spawn and join should not be in the same thread - causing blocking -> not true multi-threading
+//    Use a thread-pool configuration (which is the queue manager)
+// 2. Use the name to be UID for now (assume no users with same name). Resolved by having login system (further enhancement)
+// 3. Accessing shared resources solved by condition variable with reader/writer setup. 
+// 4. SAY will spawns multiple threads, a 1-1 relation (server to client)
+// 5. Mute & unmute lists will have a name list (pointer arrays). (update: client side responsibility)
+// 6. 
+
 // make this void *
 
 
@@ -36,19 +44,50 @@ void *listener(void *arg){
         int rc = udp_socket_read(listener_args->sd, &client_address, client_request, BUFFER_SIZE);
 
         if (rc > 0){
-            q_append(listener_args->task_queue, client_request, client_address); // this includes queue full sleep for thread
+            q_append(listener_args->task_queue, client_request, &client_address); // this includes queue full sleep for thread
         }
     }
 }
+
+client_node_t* find_client(client_node_t* head, char name[]){
+    // if check_by_name = 1, use name to check
+    // if check_by_name = 0, use address to check
+    client_node_t *node = head; 
+    while(strcmp(node->client_name, name)){
+    node = node->next; 
+        if(node == NULL){
+            return NULL; 
+        }
+    }
+    
+    return node; 
+
+}
+
+client_node_t* find_client_by_address(client_node_t* head, struct sockaddr_in* address){
+    client_node_t *node = head;
+    while(memcmp(&node->client_address, &address, sizeof(struct sockaddr_in))){
+        node = node->next;
+        if(node == NULL){
+            return NULL;
+        }
+    }
+    return node; 
+}
+
 
 
 void *connect_to_server(void* args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     char* name = cmd_args->command->args[0];
+    Monitor_t* client_linkedList = cmd_args->client_linkedList; 
+    // writer of linked list
+    writer_checkin(client_linkedList); 
+    // enter critical section
     add_client_to_list(cmd_args->head, cmd_args->tail, cmd_args->from_addr, name);
-
+    writer_checkout(client_linkedList); 
     char server_response[BUFFER_SIZE];
-    sprintf(server_response, "CONNECTED %s", name);
+    sprintf(server_response, "[SERVER RESPONSE]: CONNECTED %s", name);
     int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, strlen(server_response) + 1);
     printf("Request served...\n");
 
@@ -69,9 +108,25 @@ client_node_t* find_client(client_node_t* head, char who[]){
 }
 
 void *say(void *args){
+    // Example: SAY Hello everyone!
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* who = cmd_args->command->args[0]; 
-    char* message = cmd_args->command->args[1]; 
+    *cmd_args->command->args[1] = cmd_args->command->args[0]; 
+    client_node_t* node = cmd_args->head; 
+    while(node != NULL){
+        pthread_t t; 
+        execute_command_args_t* new_cmd_args = malloc(sizeof(execute_command_args_t)); 
+        new_cmd_args = cmd_args; 
+        reader_checkin(cmd_args->client_linkedList); 
+        *new_cmd_args->command->args[0] = node->client_name; 
+        pthread_create(&t, NULL, sayto, new_cmd_args);
+        pthread_detach(&t); 
+        node = node->next; 
+        reader_checkout(cmd_args->client_linkedList);
+        // STARVATION OF THE WRITER THREADS?
+    }
+    
+    /*
+    char* message = cmd_args->command->args[1];     
     client_node_t *iter = cmd_args->head; 
     client_node_t *check = cmd_args->tail; 
     while((iter!=check)&&(iter!=NULL)){
@@ -82,34 +137,58 @@ void *say(void *args){
         int rc = udp_socket_write(cmd_args->sd, &(iter->client_address), send_message, strlen(send_message)+1);
         iter = iter->next; 
     }
+    */ 
 }
 
 
 void *sayto(void *args){
+    // Example: SAYTO Alice Hello!
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* from_who = cmd_args->command->args[0]; 
-    char* to_who = cmd_args->command->args[1]; 
-    char* message = cmd_args->command->args[2]; 
-    client_node_t* client = find_client(cmd_args->head, to_who); 
-    char* send_message[MAX_MESSAGE]; 
-    strncat(send_message, from_who, sizeof(send_message) - strlen(send_message)-1); 
-    strncat(send_message, ": ", sizeof(send_message) - strlen(send_message)-1); 
-    strncat(send_message, message, sizeof(send_message) - strlen(send_message)-1);
+    char* to_who = cmd_args->command->args[0]; 
+    char* message = cmd_args->command->args[1]; 
+    client_node_t* client; 
+    client_node_t* from_who; 
+    Monitor_t* client_linkedList = cmd_args->client_linkedList; 
 
-    int rc = udp_socket_write(cmd_args->sd, &client->client_address, send_message, strlen(send_message)+1);
-
-    // server side handling?
+    // reader side handling
+    reader_checkin(client_linkedList); 
+    // enter critical section
+    client = find_client(cmd_args->head, to_who); 
+    from_who = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
+    reader_checkout(client_linkedList); 
     
+
+    // string making
+    char* server_response[MAX_MESSAGE]; 
+    snprintf(server_response, sizeof(server_response), "%s: %s", from_who->client_name, message); 
+    int rc = udp_socket_write(cmd_args->sd, &(client->client_address), server_response, strlen(server_response)+1);
+
+
+     
 }
 
 void *disconnect(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     char* name = cmd_args->command->args[0]; 
-    remove_client_from_list(*cmd_args->head, name); 
+    struct sockaddr_in* client_address; 
+    writer_checkin(cmd_args->client_linkedList); 
+    // enter critical section
+    client_address = remove_client_from_list(*cmd_args->head, name); 
+    writer_checkout(cmd_args->client_linkedList); 
+
+
+    // writer of linked list
+
+    // server response
+    char* server_response[MAX_MESSAGE]; 
+    snprintf(server_response, sizeof(server_response), "[SERVER RESPONSE]: You have disconnected"); 
+    int rc = udp_socket_write(cmd_args->sd, client_address, server_response, strlen(server_response)+1); 
 }
+
 
 void *mute(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    
 
 }
 
@@ -119,16 +198,20 @@ void *unmute(void *args){
 
 void *rename(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* who = cmd_args->command->args[0]; 
-    char* new_name = cmd_args->command->args[1]; 
-    client_node_t *iter = cmd_args->head; 
-    client_node_t* client = find_client(cmd_args->head, who); 
+    char* name = cmd_args->command->args[0]; 
+    char* to_who = cmd_args->command->args[1]; 
+    char* message = cmd_args->command->args[2]; 
+    client_node_t *client; 
 
-    // first assume there is no identical name & no request to be named to repeated name
-    char* send_message[MAX_MESSAGE] = "You have successfully changed your name to"; 
-    strcat(send_message, new_name); 
-    // send confirmation message to client
-    int rc = udp_socket_write(cmd_args->sd, &client->client_address, send_message, strlen(send_message)+1)
+    writer_checkin(cmd_args->client_linkedList); 
+    // critical section
+    client = find_client(cmd_args->head, name); 
+    *client->client_name = to_who; 
+
+    writer_checkout(cmd_args->client_linkedList)
+    // writer of linked list
+
+
 }
 
 
@@ -136,21 +219,30 @@ void *kick(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     // remove the client from the linked list
     char* name = cmd_args->command->args[0]; 
-    remove_client_from_list(cmd_args->head, name); 
+    struct sockaddr_in* client_address; 
+    writer_checkin(cmd_args->client_linkedList); 
+    // enter critical section
+    client_address = remove_client_from_list(*cmd_args->head, name); 
+    writer_checkout(cmd_args->client_linkedList); 
+    // writer of linked list
 
     // send client "You have been removed from the chat"
+    char* server_response[MAX_MESSAGE]; 
+    snprintf(server_response, sizeof(server_response), "[SERVER RESPONSE]: You have disconnected"); 
+    int rc = udp_socket_write(cmd_args->sd, client_address, server_response, strlen(server_response)+1)
 
 
     // send everyone "(Whom) has been removed from the chat"
+    
 }
 
 
 
-void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_in* from_addr, client_node_t **head, client_node_t **tail){
+void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_in* from_addr, client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList){
     //make all threads neccesary for command to be executed and wait for them to be executed
     pthread_t t;
     execute_command_args_t *execute_args = malloc(sizeof(execute_command_args_t));
-    setup_command_args(execute_args,sd,command, from_addr, head, tail);
+    setup_command_args(execute_args,sd,command, from_addr, head, tail, client_linkedList);
     switch(command->kind){
         case CONN:{
             pthread_create(&t, NULL, connect_to_server, execute_args);
@@ -218,6 +310,9 @@ int main(int argc, char *argv[])
     client_node_t *tail = NULL;
     Queue task_queue;
     setup(&sd, &task_queue);
+
+    // init a share state (for linked list)
+    Monitor_t* client_linkedList; 
     
     //spawn listner
     pthread_t listener_thread;
@@ -227,9 +322,10 @@ int main(int argc, char *argv[])
     pthread_detach(listener_thread); //?
 
     //spawn queue manager thread
+    // requires synchronisation here (Linked List & chat history)
     pthread_t queue_manager_thread;
     queue_manager_args_t *queue_manager_args = malloc(sizeof(queue_manager_args_t));
-    setup_queue_manager_args(queue_manager_args,&task_queue, sd, &head, &tail);
+    setup_queue_manager_args(queue_manager_args,&task_queue, sd, &head, &tail, client_linkedList);
     pthread_create(&queue_manager_thread, NULL, queue_manager, queue_manager_args);
     pthread_detach(queue_manager_thread);
 
