@@ -26,10 +26,6 @@ typedef struct{
     pthread_mutex_t lock;
     pthread_cond_t cond_read; 
     pthread_cond_t cond_write;
-
-    // worker constraints
-    int active_worker; 
-    pthread_cond_t cond_worker; 
     client_node_t *client_head;
 } Monitor_t; 
 
@@ -108,12 +104,20 @@ void setup_listener_args(listener_args_t* args, int sd, Queue* q){
 }
 
 //queue manager thread argument struct
+//queue manager is essentially a thread-pool configuration
 typedef struct {
     Queue * task_queue;
     int sd;
     client_node_t **head;
     client_node_t **tail;
     Monitor_t* client_linkedList; 
+
+    // add worker constraints
+    // worker constraints
+    int active_worker; 
+    pthread_cond_t cond_worker; 
+    pthread_mutex_t pool_lock; 
+
 } queue_manager_args_t;
 
 void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList){
@@ -184,4 +188,20 @@ typedef struct {
     pthread_cond_t ok_to_write; 
 } chat_history_t;
 
+
+void worker_thread_checkin(queue_manager_args_t* qm_args){
+    pthread_mutex_lock(&qm_args->pool_lock);
+    while(qm_args->active_worker >= MAX_THREADS){
+        pthread_cond_wait(&qm_args->cond_worker, &qm_args->pool_lock); 
+    }
+    qm_args->active_worker++; 
+    pthread_mutex_unlock(&qm_args->pool_lock); 
+}
+
+void worker_thread_checkout(queue_manager_args_t* qm_args){
+    pthread_mutex_lock(&qm_args->pool_lock); 
+    qm_args->active_worker--; 
+    pthread_cond_signal(&qm_args->cond_worker); 
+    pthread_mutex_unlock(&qm_args->pool_lock); 
+}
 

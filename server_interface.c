@@ -15,12 +15,12 @@
 
 // Discussion note with Josh:
 // 1. The spawn and join should not be in the same thread - causing blocking -> not true multi-threading
-//    Use a thread-pool configuration (which is the queue manager)
+//    Use a thread-pool configuration (which is the queue manager) (DONE, by having the detach)
 // 2. Use the name to be UID for now (assume no users with same name). Resolved by having login system (further enhancement)
-// 3. Accessing shared resources solved by condition variable with reader/writer setup. 
-// 4. SAY will spawns multiple threads, a 1-1 relation (server to client)
+// 3. Accessing shared resources solved by condition variable with reader/writer setup.  (DONE, see Monitor_t)
+// 4. SAY will spawns multiple threads, a 1-1 relation (server to client) (???)
 // 5. Mute & unmute lists will have a name list (pointer arrays). 
-// 6. 
+// 6. Maximum worker control (DONE, see )
 
 
 
@@ -44,7 +44,7 @@ void *listener(void *arg){
         int rc = udp_socket_read(listener_args->sd, &client_address, client_request, BUFFER_SIZE);
 
         if (rc > 0){
-            q_append(listener_args->task_queue, client_request, &client_address); // this includes queue full sleep for thread
+            q_append(listener_args->task_queue, client_request, client_address); // this includes queue full sleep for thread
         }
     }
 }
@@ -208,7 +208,7 @@ void *rename(void *args){
     client = find_client(cmd_args->head, name); 
     *client->client_name = to_who; 
 
-    writer_checkout(cmd_args->client_linkedList)
+    writer_checkout(cmd_args->client_linkedList);
     // writer of linked list
 
 
@@ -229,7 +229,7 @@ void *kick(void *args){
     // send client "You have been removed from the chat"
     char* server_response[MAX_MESSAGE]; 
     snprintf(server_response, sizeof(server_response), "[SERVER RESPONSE]: You have disconnected"); 
-    int rc = udp_socket_write(cmd_args->sd, client_address, server_response, strlen(server_response)+1)
+    int rc = udp_socket_write(cmd_args->sd, client_address, server_response, strlen(server_response)+1);
 
 
     // send everyone "(Whom) has been removed from the chat"
@@ -272,6 +272,7 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
         default:
             break;
     }
+    pthread_detach(&t); 
 }
 
 void *queue_manager(void* arg){
@@ -284,9 +285,9 @@ void *queue_manager(void* arg){
 
         command_t cur_command;
         command_handler(&cur_command, tokenised_command); // fill out cur_command
-
-        spawn_execute_command_threads(qm_args->sd, &cur_command, &from_addr, qm_args->head, qm_args->tail);
-        
+        worker_thread_checkin(qm_args); 
+        spawn_execute_command_threads(qm_args->sd, &cur_command, &from_addr, qm_args->head, qm_args->tail, qm_args->client_linkedList);
+        worker_thread_checkout(qm_args); 
     }
 }
 
