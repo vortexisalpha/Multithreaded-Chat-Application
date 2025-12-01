@@ -314,7 +314,7 @@ int main(int argc, char *argv[])
     setup(&sd, &task_queue);
 
     // init a share state (for linked list)
-    Monitor_t* client_linkedList; 
+    Monitor_t* client_linkedList = malloc(sizeof(Monitor_t)); 
     monitor_init(client_linkedList); 
     
     //spawn listner
