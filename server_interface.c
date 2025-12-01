@@ -216,14 +216,12 @@ void *unmute(void *args){
 
 void *rename_client(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* name = cmd_args->command->args[0]; 
-    char* to_who = cmd_args->command->args[1]; 
-    char* message = cmd_args->command->args[2]; 
+    char* to_who = cmd_args->command->args[0]; 
     client_node_t *client; 
 
     writer_checkin(cmd_args->client_linkedList); 
     // critical section
-    client = find_client(cmd_args->head, name); 
+    client = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
     strcpy(client->client_name, to_who); 
 
     writer_checkout(cmd_args->client_linkedList);
