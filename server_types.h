@@ -51,28 +51,33 @@ void add_client_to_list(client_node_t **head,client_node_t **tail, struct sockad
 }
 
 
-struct sockaddr_in* remove_client_from_list(client_node_t *head, char name[NAME_SIZE]){
-    client_node_t *iter = head; 
-    client_node_t *last_node; 
-    struct sockaddr_in* client_address; 
+struct sockaddr_in* remove_client_from_list(client_node_t **head, char name[NAME_SIZE]){
+    client_node_t *iter = *head; 
+    client_node_t *last_node = NULL; 
+    struct sockaddr_in* client_address = NULL; 
+    
     while(iter != NULL){
-        if(iter == NULL){
-            printf("Error. Client is not found in linked list\n");
-            return NULL; 
-        }
         if(strcmp(iter->client_name, name) == 0){
             printf("Remove client: %s\n", name);
-            last_node->next = iter->next; 
-            client_address = &iter->client_address; 
-            free(iter); 
-            break; 
+
+            client_address = malloc(sizeof(struct sockaddr_in));
+            *client_address = iter->client_address;
+            
+            if(last_node == NULL){
+                *head = iter->next;
+            } else {
+                last_node->next = iter->next;
+            }
+            
+            free(iter);
+            return client_address; 
         }
         last_node = iter; 
         iter = iter->next;
-    }   
-    return client_address; 
-
-
+    }
+    
+    printf("Error. Client is not found in linked list\n");
+    return NULL; 
 }
 
 // command thread argument struct
