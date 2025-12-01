@@ -36,7 +36,7 @@ void connect_to_server(char message[], client_t * client){
 
     int rc = set_socket_addr(&server_addr, "127.0.0.1", SERVER_PORT);
     char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
-    strcpy(client_request, "TESTCON");
+    strcpy(client_request, "conn$ alice");
     rc = udp_socket_write(sd, &server_addr, client_request, BUFFER_SIZE);
     if (rc > 0)
     {
@@ -139,7 +139,7 @@ void *chat_display(void *arg){
         int total_messages = *chat_args->message_count;
         hash_node_t **mute_table = chat_args->client->mute_table;
         for (int i = 0; i < total_messages; i++){
-            char *username;
+            char username[NAME_SIZE];
             extract_username(chat_args->messages[i], username, NAME_SIZE);
             if(contains(mute_table, username)) continue;
             printf("%s\n", chat_args->messages[i]);
