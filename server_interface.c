@@ -185,12 +185,16 @@ void *disconnect(void *args){
 
 void *mute(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    
-
+    //snprintf(server_response, SIZE,"mute$ alice")
+    free(cmd_args);
+    return NULL;
 }
 
 void *unmute(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    //snprintf(server_response, SIZE,"unmute$ alice")
+    free(cmd_args);
+    return NULL;
 }
 
 void *rename_client(void *args){
@@ -208,7 +212,8 @@ void *rename_client(void *args){
     writer_checkout(cmd_args->client_linkedList);
     // writer of linked list
 
-
+    free(cmd_args);
+    return NULL;
 }
 
 
