@@ -51,11 +51,8 @@ void *listener(void *arg){
 
 client_node_t* find_client_by_address(client_node_t** head, struct sockaddr_in* address){
     client_node_t *node = *head;
-    while((node != NULL) && (memcmp(&(node->client_address), address, sizeof(struct sockaddr_in) != 0))){
+    while((node != NULL) && (memcmp(&(node->client_address), address, sizeof(struct sockaddr_in)) != 0)){
         node = node->next;
-        if(node == NULL){
-            return NULL;
-        }
     }
     return node; 
 }
