@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <sys/select.h>
+#include "custom_hash_table.h"
 #include "udp.h"
 #include "cmd.h"
 #include "client_types.h"
@@ -60,29 +61,6 @@ void message_flash(char * message){
     }
 }
 
-void send_signal(client_t * client, char * client_request){
-    int rc = udp_socket_write(client->sd, &client->server_addr, client_request, BUFFER_SIZE);
-    char * server_response;
-    if (rc > 0)
-    {
-        int rc = udp_socket_read(client->sd, &client->responder_addr, server_response, BUFFER_SIZE);
-        printf("server_response: %s", server_response);
-    } 
-    else{
-        printf("Error! Message not sent!\n");
-    }
-}
-
-void global_say(char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
-    /*if (!client->connected){
-        message_flash("Client Not Connected!");
-        return;
-    }*/
-   
-    // snprintf(client_messages[*client_messages_count], MAX_LEN + 6, "You: %s", message); // This is how we print to client messages.
-    (*client_messages_count)++;
-}
-
 /*
 
 void sayto(char who[], char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
@@ -112,71 +90,6 @@ void rename(char name[], char client_messages[MAX_MSGS][MAX_LEN], int * client_m
 }
 */ 
 
-bool disconnect(){
-    printf("You have disconnected\n"); 
-    return true; 
-}
-
-
-
-void execute_command(command_t *command, client_t *client, char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count){
-    int argsc = 1; 
-    char display_to_client[MAX_LEN]; 
-    switch(command->kind){
-        case CONN:
-            connect_to_server(command->args[0], client);
-            break;
-        case SAY:
-            global_say(command->args[0], client_messages, client_messages_count, client);
-            break; 
-        case SAYTO:
-            argsc = 2; 
-            // if we want to store the activity, use snprintf instead of printf, 
-            // and load it into the activity log (in client_types.h)
-            printf("You: (private to %s) %s\n", command->args[0], command->args[1]); 
-            // strncat(display_to_client, "You: (private to %s) %s\n", sizeof(display_to_client)-strlen(display_to_client)); 
-            break; 
-        case MUTE:
-            printf("You have muted %s\n", command->args[0]);  
-            break; 
-        case UNMUTE:
-            printf("You have unmuted %s\n", command->args[0]);  
-            break; 
-        case RENAME:
-            // could fail (if there is already a same name)
-            // come back later and fix the unique name problem
-            printf("You have requested to rename to %s\n", command->args[0]);  
-            break; 
-        case DISCONN:
-            disconnect(); 
-
-        default:
-            printf("Error, command type is undefined\n"); 
-        
-    }
-    if((command->kind != CONN) && (command->kind != DISCONN)){
-        char send_message[MAX_LEN];
-        strncat(send_message, (char*) command->kind, sizeof(send_message)-strlen(send_message)-1); 
-        strncat(send_message, " ", sizeof(send_message)-strlen(send_message)-1); 
-        for(int i=0; i<argsc; i++){
-            /*
-            Error: The write_socket can only send a string, not an array of string
-            strncpy(client_messages[*client_messages_count], command->args[i], MAX_LEN-1); 
-            *client_messages_count ++; 
-            */ 
-           strncat(send_message, command->args[i],  sizeof(send_message)-strlen(send_message)-1); 
-           strncat(send_message, " ", sizeof(send_message)-strlen(send_message)-1); 
-
-
-        }
-        strncat(send_message, "\0", sizeof(send_message)-strlen(send_message)-1); 
-        // printf("%s\n", send_message); 
-        send_signal(client, send_message); 
-    }
-    
-}
-
-
 //reads socket and appends to queue
 void *cli_listener(void *arg){
     cli_listener_args_t* listener_args = (cli_listener_args_t*)arg;
@@ -194,6 +107,7 @@ void *cli_listener(void *arg){
             q_append(listener_args->task_queue, server_response, NULL); // this includes queue full sleep for thread
         }
     }
+    return NULL;
 }
 
 // chat display thread with adaptive growing display
@@ -216,18 +130,21 @@ void *chat_display(void *arg){
         pthread_cond_wait(chat_args->messages_cond, chat_args->messages_mutex);
         
         //redraw entire screen from top
-        printf("\033[2J\033[H"); // Clear and go to top
+        printf("\033[2J\033[H"); //clear and go to top
         
         //draw header
         printf("Chat Messages:\n\n");
         
-        //print all messages (grows dynamically)
+        //print all messages
         int total_messages = *chat_args->message_count;
+        hash_node_t **mute_table = chat_args->client->mute_table;
         for (int i = 0; i < total_messages; i++){
+            char *username;
+            extract_username(chat_args->messages[i], username, NAME_SIZE);
+            if(contains(mute_table, username)) continue;
             printf("%s\n", chat_args->messages[i]);
         }
         
-        //draw separator and prompt right after messages
         printf("\n---------------------\n");
         printf("> ");
         fflush(stdout);
@@ -270,14 +187,40 @@ void *user_input(void *arg){
 }
 
 //execute server response. e.g say command
-void execute_server_command(command_t *cmd, int * message_count, char (* messages)[MAX_LEN], pthread_mutex_t* mutex, pthread_cond_t* cond){
+void execute_server_command(command_t *cmd, client_t * client,  int * message_count, char (* messages)[MAX_LEN], pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     switch(cmd->kind){
         case SAY:
-            say_exec(cmd, message_count, messages, mutex, cond);
+            say_exec(cmd, message_count, messages, message_mutex, message_update_cond);
+            break;
+        case MUTE:
+            mute_exec(cmd, client, message_mutex, message_update_cond);
+            break;
+        case UNMUTE:
+            unmute_exec(cmd, client, message_mutex, message_update_cond);
             break;
         default:
             break;
     }
+}
+
+//handles each command
+void* handle_cli_side_cmd(void* args){
+    handle_cli_side_cmd_args_t* cli_side_args = (handle_cli_side_cmd_args_t *)args;
+    
+    command_t cmd;
+    command_handler(&cmd, cli_side_args->tokenised_command);
+    execute_server_command(&cmd, cli_side_args->client, cli_side_args->message_count, cli_side_args->messages, cli_side_args->messages_mutex, cli_side_args->messages_cond);
+    
+    //clean up
+    if (cli_side_args->tokenised_command != NULL) {
+        for (int i = 0; i < MAX_COMMAND_LEN && cli_side_args->tokenised_command[i] != NULL; i++) {
+            free(cli_side_args->tokenised_command[i]);
+        }
+        free(cli_side_args->tokenised_command);
+    }
+    free(cli_side_args);
+    
+    return NULL;
 }
 
 //queue manager thread
@@ -287,14 +230,27 @@ void *cli_queue_manager(void* arg){
     
     client_t * client = qm_args->client;
     while(1){
-        char * tokenised_command[MAX_COMMAND_LEN] = {NULL};
+        char * tokenised_command_temp[MAX_COMMAND_LEN] = {NULL}; 
 
-        q_pop(qm_args->task_queue, tokenised_command, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
+        q_pop(qm_args->task_queue, tokenised_command_temp, NULL); // pop command from front of command queue (includes sleep wait for queue nonempty)
+        //POTENTIAL RACE CONDITION CONSERN: THREAD SWITCH HERE AND QUEUE[i] REPLACED REQUIRES FIXING
 
-        char client_request[BUFFER_SIZE];
-        command_t cmd;
-        command_handler(&cmd, tokenised_command); // fill out cur_command
-        execute_server_command(&cmd, qm_args->message_count, qm_args->messages, qm_args->messages_mutex, qm_args->messages_cond);
+        //copy the tokenised_command to heap memory to avoid race condition
+        char ** tokenised_command_copy = malloc(MAX_COMMAND_LEN * sizeof(char*));
+        for (int i = 0; i < MAX_COMMAND_LEN; i++) {
+            if (tokenised_command_temp[i] != NULL) {
+                tokenised_command_copy[i] = malloc(strlen(tokenised_command_temp[i]) + 1);
+                strcpy(tokenised_command_copy[i], tokenised_command_temp[i]);
+            } else {
+                tokenised_command_copy[i] = NULL;
+            }
+        }
+
+        pthread_t t;
+        handle_cli_side_cmd_args_t *handle_cli_side_cmd_args = malloc(sizeof(handle_cli_side_cmd_args_t));
+        setup_handle_cli_side_cmd_args(handle_cli_side_cmd_args, client, qm_args->messages, qm_args->message_count, qm_args->messages_mutex, qm_args->messages_cond, tokenised_command_copy);
+        pthread_create(&t, NULL, handle_cli_side_cmd, handle_cli_side_cmd_args);
+        pthread_detach(t);
     }
     return NULL;
 }
@@ -325,7 +281,7 @@ int main(int argc, char *argv[])
     pthread_create(&chat_display_thread, NULL, chat_display, chat_display_args);
     pthread_detach(chat_display_thread);
 
-    //spawn user input thread
+    //spawn user input sender thread
     pthread_t user_input_thread;
     user_input_args_t *user_input_args = malloc(sizeof(user_input_args_t));
     setup_user_input_args(user_input_args, &client);
