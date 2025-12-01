@@ -50,6 +50,19 @@ void add_client_to_list(client_node_t **head,client_node_t **tail, struct sockad
     
 }
 
+void monitor_init(Monitor_t* monitor){
+    monitor->AR=0; // active reader
+    monitor->WR=0; // waiting reader
+
+    monitor->AW=0; // active writer
+    monitor->WW=0; // waiting writer
+
+    pthread_mutex_init(&monitor->lock, NULL);
+    pthread_cond_init(&monitor->cond_read, NULL); 
+    pthread_cond_init(&monitor->cond_write, NULL); 
+    monitor->client_head = NULL;
+}
+
 
 struct sockaddr_in* remove_client_from_list(client_node_t **head, char name[NAME_SIZE]){
     client_node_t *iter = *head; 
@@ -133,6 +146,9 @@ void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, clie
     args->head = head;
     args->tail = tail;
     args->client_linkedList = client_linkedList; 
+    args->active_worker = 0;
+    pthread_mutex_init(&args->pool_lock, NULL);
+    pthread_cond_init(&args->cond_worker, NULL); 
 }
 
 // muted chat buffer, local to each user

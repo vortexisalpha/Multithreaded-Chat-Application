@@ -315,6 +315,7 @@ int main(int argc, char *argv[])
 
     // init a share state (for linked list)
     Monitor_t* client_linkedList; 
+    monitor_init(client_linkedList); 
     
     //spawn listner
     pthread_t listener_thread;
