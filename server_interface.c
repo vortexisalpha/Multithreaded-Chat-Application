@@ -114,8 +114,8 @@ void *sayto(void *args){
     snprintf(server_response, MAX_MESSAGE, "say$ %s:(private message) %s", from_who->client_name, message); 
     int rc = udp_socket_write(cmd_args->sd, &(client->client_address), server_response, MAX_MESSAGE);
 
-
-     
+    free(cmd_args);
+    return NULL;
 }
 
 //sayto:
