@@ -170,8 +170,13 @@ void *say(void *args){
 
 void *disconnect(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* name = cmd_args->command->args[0]; 
+    client_node_t* node;
+    char* name; 
     struct sockaddr_in* client_address; 
+    reader_checkin(cmd_args->client_linkedList); 
+    node = find_client_by_address(cmd_args->head, client_address); 
+    name = node->client_name; 
+    reader_checkout(cmd_args->client_linkedList); 
     writer_checkin(cmd_args->client_linkedList); 
     // enter critical section
     client_address = remove_client_from_list(cmd_args->head, cmd_args->tail, name); 
