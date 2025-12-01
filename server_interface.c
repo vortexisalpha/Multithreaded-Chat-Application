@@ -293,9 +293,10 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
             free(command);
             free(from_addr);
             free(execute_args);
-            break;
+            return;
     }
     pthread_detach(t); 
+
 }
 
 void *queue_manager(void* arg){
