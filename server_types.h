@@ -64,7 +64,7 @@ void monitor_init(Monitor_t* monitor){
 }
 
 
-struct sockaddr_in* remove_client_from_list(client_node_t **head, char name[NAME_SIZE]){
+struct sockaddr_in* remove_client_from_list(client_node_t **head, client_node_t **tail, char name[NAME_SIZE]){
     client_node_t *iter = *head; 
     client_node_t *last_node = NULL; 
     struct sockaddr_in* client_address = NULL; 
@@ -76,10 +76,16 @@ struct sockaddr_in* remove_client_from_list(client_node_t **head, char name[NAME
             client_address = malloc(sizeof(struct sockaddr_in));
             *client_address = iter->client_address;
             
+            //update head if removing first node
             if(last_node == NULL){
                 *head = iter->next;
             } else {
                 last_node->next = iter->next;
+            }
+            
+            //update tail if removing last node
+            if(iter == *tail){
+                *tail = last_node;
             }
             
             free(iter);

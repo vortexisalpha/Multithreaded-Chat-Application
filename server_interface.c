@@ -76,6 +76,9 @@ void *connect_to_server(void* args){
     int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, MAX_MESSAGE);
     printf("Request served...\n");
 
+    // Free heap-allocated resources
+    free(cmd_args->command);
+    free(cmd_args->from_addr);
     free(args);
     return NULL;
 }
@@ -114,6 +117,9 @@ void *sayto(void *args){
     snprintf(server_response, MAX_MESSAGE, "say$ %s:(private message) %s", from_who->client_name, message); 
     int rc = udp_socket_write(cmd_args->sd, &(client->client_address), server_response, MAX_MESSAGE);
 
+    // Free heap-allocated resources
+    free(cmd_args->command);
+    free(cmd_args->from_addr);
     free(cmd_args);
     return NULL;
 }
@@ -141,6 +147,9 @@ void *say(void *args){
         node = node->next; 
     }
     reader_checkout(cmd_args->client_linkedList);
+    
+    free(cmd_args->command);
+    free(cmd_args->from_addr);
     free(cmd_args);
     return NULL;
     /*
@@ -165,7 +174,7 @@ void *disconnect(void *args){
     struct sockaddr_in* client_address; 
     writer_checkin(cmd_args->client_linkedList); 
     // enter critical section
-    client_address = remove_client_from_list(cmd_args->head, name); 
+    client_address = remove_client_from_list(cmd_args->head, cmd_args->tail, name); 
     writer_checkout(cmd_args->client_linkedList); 
 
 
@@ -176,8 +185,9 @@ void *disconnect(void *args){
     snprintf(server_response, MAX_MESSAGE, "[SERVER RESPONSE]: You have disconnected"); 
     int rc = udp_socket_write(cmd_args->sd, client_address, server_response, MAX_MESSAGE); 
     
-    // Free the allocated address
     free(client_address);
+    free(cmd_args->command);
+    free(cmd_args->from_addr);
     free(args);
     return NULL;
 }
@@ -186,6 +196,9 @@ void *disconnect(void *args){
 void *mute(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     //snprintf(server_response, SIZE,"mute$ alice")
+    
+    free(cmd_args->command);
+    free(cmd_args->from_addr);
     free(cmd_args);
     return NULL;
 }
@@ -193,6 +206,8 @@ void *mute(void *args){
 void *unmute(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     //snprintf(server_response, SIZE,"unmute$ alice")
+    free(cmd_args->command);
+    free(cmd_args->from_addr);
     free(cmd_args);
     return NULL;
 }
@@ -210,8 +225,9 @@ void *rename_client(void *args){
     strcpy(client->client_name, to_who); 
 
     writer_checkout(cmd_args->client_linkedList);
-    // writer of linked list
-
+    
+    free(cmd_args->command);
+    free(cmd_args->from_addr);
     free(cmd_args);
     return NULL;
 }
@@ -224,7 +240,7 @@ void *kick(void *args){
     struct sockaddr_in* client_address; 
     writer_checkin(cmd_args->client_linkedList); 
     // enter critical section
-    client_address = remove_client_from_list(cmd_args->head, name); 
+    client_address = remove_client_from_list(cmd_args->head, cmd_args->tail, name); 
     writer_checkout(cmd_args->client_linkedList); 
     // writer of linked list
 
@@ -236,8 +252,9 @@ void *kick(void *args){
 
     // send everyone "(Whom) has been removed from the chat"
     
-    // Free the allocated address
     free(client_address);
+    free(cmd_args->command);
+    free(cmd_args->from_addr);
     free(args);
     return NULL;
 }
@@ -276,6 +293,9 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
             pthread_create(&t, NULL, kick, execute_args); 
             break; 
         default:
+            free(command);
+            free(from_addr);
+            free(execute_args);
             break;
     }
     pthread_detach(t); 
@@ -286,13 +306,16 @@ void *queue_manager(void* arg){
 
     while(1){
         char * tokenised_command[MAX_COMMAND_LEN];
-        struct sockaddr_in from_addr;
-        q_pop(qm_args->task_queue, tokenised_command, &from_addr); // pop command from front of command queue (includes sleep wait for queue nonempty)
+        
+       
+        struct sockaddr_in* from_addr = malloc(sizeof(struct sockaddr_in));
+        q_pop(qm_args->task_queue, tokenised_command, from_addr);
 
-        command_t cur_command;
-        command_handler(&cur_command, tokenised_command); // fill out cur_command
+       
+        command_t* cur_command = malloc(sizeof(command_t));
+        command_handler(cur_command, tokenised_command); 
         worker_thread_checkin(qm_args); 
-        spawn_execute_command_threads(qm_args->sd, &cur_command, &from_addr, qm_args->head, qm_args->tail, qm_args->client_linkedList);
+        spawn_execute_command_threads(qm_args->sd, cur_command, from_addr, qm_args->head, qm_args->tail, qm_args->client_linkedList);
         worker_thread_checkout(qm_args); 
     }
 }
