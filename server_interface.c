@@ -165,7 +165,7 @@ void *disconnect(void *args){
     struct sockaddr_in* client_address; 
     writer_checkin(cmd_args->client_linkedList); 
     // enter critical section
-    client_address = remove_client_from_list(*cmd_args->head, name); 
+    client_address = remove_client_from_list(cmd_args->head, name); 
     writer_checkout(cmd_args->client_linkedList); 
 
 
@@ -175,6 +175,11 @@ void *disconnect(void *args){
     char server_response[MAX_MESSAGE]; 
     snprintf(server_response, MAX_MESSAGE, "[SERVER RESPONSE]: You have disconnected"); 
     int rc = udp_socket_write(cmd_args->sd, client_address, server_response, MAX_MESSAGE); 
+    
+    // Free the allocated address
+    free(client_address);
+    free(args);
+    return NULL;
 }
 
 
@@ -214,7 +219,7 @@ void *kick(void *args){
     struct sockaddr_in* client_address; 
     writer_checkin(cmd_args->client_linkedList); 
     // enter critical section
-    client_address = remove_client_from_list(*cmd_args->head, name); 
+    client_address = remove_client_from_list(cmd_args->head, name); 
     writer_checkout(cmd_args->client_linkedList); 
     // writer of linked list
 
@@ -226,6 +231,10 @@ void *kick(void *args){
 
     // send everyone "(Whom) has been removed from the chat"
     
+    // Free the allocated address
+    free(client_address);
+    free(args);
+    return NULL;
 }
 
 
