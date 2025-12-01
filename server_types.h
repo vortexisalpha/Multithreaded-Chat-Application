@@ -12,7 +12,6 @@ typedef struct client_node{
     struct client_node* next;
     struct sockaddr_in client_address;
     char client_name[NAME_SIZE];
-    muted_namelist_t* muted; 
 } client_node_t;
 
 

@@ -49,23 +49,9 @@ void *listener(void *arg){
     }
 }
 
-client_node_t* find_client(client_node_t* head, char name[]){
-    // if check_by_name = 1, use name to check
-    // if check_by_name = 0, use address to check
-    client_node_t *node = head; 
-    while(strcmp(node->client_name, name)){
-    node = node->next; 
-        if(node == NULL){
-            return NULL; 
-        }
-    }
-    
-    return node; 
 
-}
-
-client_node_t* find_client_by_address(client_node_t* head, struct sockaddr_in* address){
-    client_node_t *node = head;
+client_node_t* find_client_by_address(client_node_t** head, struct sockaddr_in* address){
+    client_node_t *node = *head;
     while(memcmp(&node->client_address, &address, sizeof(struct sockaddr_in))){
         node = node->next;
         if(node == NULL){
@@ -88,15 +74,15 @@ void *connect_to_server(void* args){
     writer_checkout(client_linkedList); 
     char server_response[BUFFER_SIZE];
     sprintf(server_response, "[SERVER RESPONSE]: CONNECTED %s", name);
-    int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, strlen(server_response) + 1);
+    int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, MAX_MESSAGE);
     printf("Request served...\n");
 
     free(args);
     return NULL;
 }
 
-client_node_t* find_client(client_node_t* head, char who[]){
-    client_node_t* iter = head; 
+client_node_t* find_client(client_node_t** head, char who[]){
+    client_node_t* iter = *head; 
     while((strcmp(iter->client_name, who) != 0) && (iter != NULL)){
         iter = iter->next; 
     }
@@ -107,19 +93,45 @@ client_node_t* find_client(client_node_t* head, char who[]){
     return iter; 
 }
 
+void *sayto(void *args){
+    // Example: SAYTO Alice Hello!
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    char* to_who = cmd_args->command->args[0]; 
+    char* message = cmd_args->command->args[1]; 
+    client_node_t* client; 
+    client_node_t* from_who; 
+    Monitor_t* client_linkedList = cmd_args->client_linkedList; 
+
+    // reader side handling
+    reader_checkin(client_linkedList); 
+    // enter critical section
+    client = find_client(cmd_args->head, to_who); 
+    from_who = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
+    reader_checkout(client_linkedList); 
+    
+
+    // string making
+    char server_response[MAX_MESSAGE]; 
+    snprintf(server_response, MAX_MESSAGE, "%s: %s", from_who->client_name, message); 
+    int rc = udp_socket_write(cmd_args->sd, &(client->client_address), server_response, MAX_MESSAGE);
+
+
+     
+}
+
 void *say(void *args){
     // Example: SAY Hello everyone!
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    *cmd_args->command->args[1] = cmd_args->command->args[0]; 
-    client_node_t* node = cmd_args->head; 
+    *cmd_args->command->args[1] = *cmd_args->command->args[0]; 
+    client_node_t* node = *(cmd_args->head); 
     while(node != NULL){
         pthread_t t; 
         execute_command_args_t* new_cmd_args = malloc(sizeof(execute_command_args_t)); 
         new_cmd_args = cmd_args; 
         reader_checkin(cmd_args->client_linkedList); 
-        *new_cmd_args->command->args[0] = node->client_name; 
+        strcpy(new_cmd_args->command->args[0], node->client_name);
         pthread_create(&t, NULL, sayto, new_cmd_args);
-        pthread_detach(&t); 
+        pthread_detach(t); 
         node = node->next; 
         reader_checkout(cmd_args->client_linkedList);
         // STARVATION OF THE WRITER THREADS?
@@ -141,32 +153,6 @@ void *say(void *args){
 }
 
 
-void *sayto(void *args){
-    // Example: SAYTO Alice Hello!
-    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* to_who = cmd_args->command->args[0]; 
-    char* message = cmd_args->command->args[1]; 
-    client_node_t* client; 
-    client_node_t* from_who; 
-    Monitor_t* client_linkedList = cmd_args->client_linkedList; 
-
-    // reader side handling
-    reader_checkin(client_linkedList); 
-    // enter critical section
-    client = find_client(cmd_args->head, to_who); 
-    from_who = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
-    reader_checkout(client_linkedList); 
-    
-
-    // string making
-    char* server_response[MAX_MESSAGE]; 
-    snprintf(server_response, sizeof(server_response), "%s: %s", from_who->client_name, message); 
-    int rc = udp_socket_write(cmd_args->sd, &(client->client_address), server_response, strlen(server_response)+1);
-
-
-     
-}
-
 void *disconnect(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     char* name = cmd_args->command->args[0]; 
@@ -180,9 +166,9 @@ void *disconnect(void *args){
     // writer of linked list
 
     // server response
-    char* server_response[MAX_MESSAGE]; 
-    snprintf(server_response, sizeof(server_response), "[SERVER RESPONSE]: You have disconnected"); 
-    int rc = udp_socket_write(cmd_args->sd, client_address, server_response, strlen(server_response)+1); 
+    char server_response[MAX_MESSAGE]; 
+    snprintf(server_response, MAX_MESSAGE, "[SERVER RESPONSE]: You have disconnected"); 
+    int rc = udp_socket_write(cmd_args->sd, client_address, server_response, MAX_MESSAGE); 
 }
 
 
@@ -196,7 +182,7 @@ void *unmute(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
 }
 
-void *rename(void *args){
+void *rename_client(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     char* name = cmd_args->command->args[0]; 
     char* to_who = cmd_args->command->args[1]; 
@@ -206,7 +192,7 @@ void *rename(void *args){
     writer_checkin(cmd_args->client_linkedList); 
     // critical section
     client = find_client(cmd_args->head, name); 
-    *client->client_name = to_who; 
+    strcpy(client->client_name, to_who); 
 
     writer_checkout(cmd_args->client_linkedList);
     // writer of linked list
@@ -227,9 +213,9 @@ void *kick(void *args){
     // writer of linked list
 
     // send client "You have been removed from the chat"
-    char* server_response[MAX_MESSAGE]; 
-    snprintf(server_response, sizeof(server_response), "[SERVER RESPONSE]: You have disconnected"); 
-    int rc = udp_socket_write(cmd_args->sd, client_address, server_response, strlen(server_response)+1);
+    char server_response[MAX_MESSAGE]; 
+    snprintf(server_response, MAX_MESSAGE, "[SERVER RESPONSE]: You have disconnected"); 
+    int rc = udp_socket_write(cmd_args->sd, client_address, server_response, MAX_MESSAGE);
 
 
     // send everyone "(Whom) has been removed from the chat"
@@ -264,7 +250,7 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
             pthread_create(&t, NULL, unmute, execute_args); 
             break; 
         case RENAME:
-            pthread_create(&t, NULL, rename, execute_args); 
+            pthread_create(&t, NULL, rename_client, execute_args); 
             break; 
         case KICK:
             pthread_create(&t, NULL, kick, execute_args); 
@@ -272,7 +258,7 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
         default:
             break;
     }
-    pthread_detach(&t); 
+    pthread_detach(t); 
 }
 
 void *queue_manager(void* arg){
