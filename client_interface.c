@@ -36,7 +36,7 @@ void connect_to_server(char message[], client_t * client){
 
     int rc = set_socket_addr(&server_addr, "127.0.0.1", SERVER_PORT);
     char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
-    strcpy(client_request, "TESTCON");
+    strcpy(client_request, "conn$ alice");
     rc = udp_socket_write(sd, &server_addr, client_request, BUFFER_SIZE);
     if (rc > 0)
     {
