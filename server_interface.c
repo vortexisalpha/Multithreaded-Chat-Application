@@ -51,7 +51,7 @@ void *listener(void *arg){
 
 client_node_t* find_client_by_address(client_node_t** head, struct sockaddr_in* address){
     client_node_t *node = *head;
-    while(node != NULL && memcmp(&(node->client_address), address, sizeof(struct sockaddr_in))){
+    while((node != NULL) && (memcmp(&(node->client_address), address, sizeof(struct sockaddr_in) != 0))){
         node = node->next;
         if(node == NULL){
             return NULL;
@@ -134,15 +134,15 @@ void *say(void *args){
     from_who = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
     reader_checkout(cmd_args->client_linkedList); 
     reader_checkin(cmd_args->client_linkedList); 
-    while(node != NULL){
-        pthread_t t; 
-        node = node->next; 
+    while(node != NULL){ 
         char server_response[MAX_MESSAGE]; 
         snprintf(server_response, MAX_MESSAGE, "say$ %s:(private message) %s", from_who->client_name, message); 
         int rc = udp_socket_write(cmd_args->sd, &node->client_address, server_response, MAX_MESSAGE); 
+        node = node->next; 
     }
     reader_checkout(cmd_args->client_linkedList);
-    
+    free(cmd_args);
+    return NULL;
     /*
     char* message = cmd_args->command->args[1];     
     client_node_t *iter = cmd_args->head; 
