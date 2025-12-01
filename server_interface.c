@@ -82,7 +82,7 @@ void *connect_to_server(void* args){
 
 client_node_t* find_client(client_node_t** head, char who[]){
     client_node_t* iter = *head; 
-    while((strcmp(iter->client_name, who) != 0) && (iter != NULL)){
+    while((iter != NULL) && (strcmp(iter->client_name, who) != 0) ){
         iter = iter->next; 
     }
     if(iter == NULL){

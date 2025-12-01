@@ -42,12 +42,12 @@ void connect_to_server(char message[], client_t * client){
     {
         int rc = udp_socket_read(sd, &responder_addr, server_response, BUFFER_SIZE);
         printf("server_response: %s", server_response);
+        strcpy(client->name, message);
+        client->server_addr = server_addr;
+        client->responder_addr = responder_addr;
+        client->sd = sd;
     } 
-
-    strcpy(client->name, message);
-    client->server_addr = server_addr;
-    client->responder_addr = responder_addr;
-    client->sd = sd;
+    
 }
 
 void message_flash(char * message){
