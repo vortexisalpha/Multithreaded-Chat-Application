@@ -51,11 +51,8 @@ void *listener(void *arg){
 
 client_node_t* find_client_by_address(client_node_t** head, struct sockaddr_in* address){
     client_node_t *node = *head;
-    while((node != NULL) && (memcmp(&(node->client_address), address, sizeof(struct sockaddr_in) != 0))){
+    while((node != NULL) && (memcmp(&(node->client_address), address, sizeof(struct sockaddr_in)) != 0)){
         node = node->next;
-        if(node == NULL){
-            return NULL;
-        }
     }
     return node; 
 }
@@ -301,9 +298,10 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
             free(command);
             free(from_addr);
             free(execute_args);
-            break;
+            return;
     }
     pthread_detach(t); 
+
 }
 
 void *queue_manager(void* arg){
