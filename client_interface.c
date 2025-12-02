@@ -28,16 +28,14 @@ void tokenise_input(char input[] ,char *args[]){
 }
 
 
-// Initialize socket without authenticating
+//initialize socket without authenticating
 void init_client_socket(client_t * client){
-    // Open socket - OS assigns unused port
     int sd = udp_socket_open(0);
     if (sd < 0) {
         printf("Error: Failed to open socket\n");
         return;
     }
     
-    // Set up server address
     struct sockaddr_in server_addr;
     int rc = set_socket_addr(&server_addr, "127.0.0.1", SERVER_PORT);
     if (rc < 0) {
@@ -46,13 +44,12 @@ void init_client_socket(client_t * client){
         return;
     }
     
-    // Save socket info (but don't set connected=true yet)
+    //save socket info but dont set connected = true yet. We have to wait for server confirmation
     client->sd = sd;
     client->server_addr = server_addr;
     printf("Socket initialized. Ready to connect.\n");
 }
 
-// Send connection request to server
 void send_connect_request(client_t * client, char* username){
     char client_request[BUFFER_SIZE];
     snprintf(client_request, BUFFER_SIZE, "conn$ %s", username);
@@ -65,28 +62,6 @@ void send_connect_request(client_t * client, char* username){
     }
 }
 
-// OLD function - kept for reference, will be removed later
-void connect_to_server(char message[], client_t * client){
-    // os has built in system to assign an unused port -> set udp_socket_open param to 0
-
-    int sd = udp_socket_open(0);
-    struct sockaddr_in server_addr, responder_addr;
-
-    int rc = set_socket_addr(&server_addr, "127.0.0.1", SERVER_PORT);
-    char client_request[BUFFER_SIZE], server_response[BUFFER_SIZE];
-    strcpy(client_request, "conn$ alice");
-    rc = udp_socket_write(sd, &server_addr, client_request, BUFFER_SIZE);
-    if (rc > 0)
-    {
-        int rc = udp_socket_read(sd, &responder_addr, server_response, BUFFER_SIZE);
-        printf("server_response: %s", server_response);
-        strcpy(client->name, message);
-        client->server_addr = server_addr;
-        client->responder_addr = responder_addr;
-        client->sd = sd;
-    } 
-    
-}
 
 void message_flash(char * message){
     clear_screen();
@@ -254,19 +229,16 @@ void *user_input(void *arg){
     return NULL;
 }
 
-// Handle connection success response from server
+//handle connection success
 void execute_connect_response(command_t *cmd, client_t * client, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     char* username = cmd->args[0];
     
     pthread_mutex_lock(&client->connection_mutex);
-    
-    // Set connection state
+
     client->connected = true;
     strcpy(client->name, username);
     
-    // Wake up the post-connection input thread
-    pthread_cond_signal(&client->connection_cond);
-    
+    pthread_cond_signal(&client->connection_cond); // signal connected to wake up true listner thread
     pthread_mutex_unlock(&client->connection_mutex);
     
     // Trigger chat display update to show new prompt
@@ -277,32 +249,29 @@ void execute_connect_response(command_t *cmd, client_t * client, pthread_mutex_t
     printf("Successfully connected as: %s\n", username);
 }
 
-// Handle connection failure response from server
+//handle connection failure
 void execute_connect_failed(command_t *cmd, client_t * client){
     char* error_message = cmd->args[0];
     printf("Connection failed: %s\n", error_message);
     printf("Please try again with a different username.\n");
 }
 
-// Handle disconnect response from server
+//handle disconnect
 void execute_disconnect_response(client_t * client, int * message_count, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     pthread_mutex_lock(&client->connection_mutex);
     
-    // Set connection state to false
+    //set connection state to false and close socket
     client->connected = false;
-    
-    // Close the socket
     if (client->sd > 0) {
         close(client->sd);
         client->sd = 0;
     }
     
-    // Wake up the pre-connection input thread
+    //wake up the pre connection input thread
     pthread_cond_signal(&client->connection_cond);
-    
     pthread_mutex_unlock(&client->connection_mutex);
     
-    // Clear chat history
+    //clear chat history
     pthread_mutex_lock(message_mutex);
     *message_count = 0;
     pthread_cond_signal(message_update_cond);
