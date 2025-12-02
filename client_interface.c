@@ -422,9 +422,12 @@ int main(int argc, char *argv[])
     client_t client;
     Queue task_queue;
 
-    setup_client(&client); // only sets client connected to false at the moment
+    setup_client(&client); // initializes client, sets connected=false, inits mutexes
     queue_init(&task_queue);
-    connect_to_server("John\0", &client);
+    
+    //initialize socket without server and client authentication
+    init_client_socket(&client);
+    
     char messages[MAX_MSGS][MAX_LEN];
     int message_count = 0;
 
@@ -439,19 +442,26 @@ int main(int argc, char *argv[])
     pthread_create(&chat_display_thread, NULL, chat_display, chat_display_args);
     pthread_detach(chat_display_thread);
 
-    //spawn user input sender thread
+    //spawn pre connection user input thread - active when not connected
+    pthread_t user_input_pre_thread;
+    user_input_args_t *user_input_pre_args = malloc(sizeof(user_input_args_t));
+    setup_user_input_args(user_input_pre_args, &client);
+    pthread_create(&user_input_pre_thread, NULL, user_input_pre_connection, user_input_pre_args);
+    pthread_detach(user_input_pre_thread);
+
+    //spawn post connection user input thread - active when connected
     pthread_t user_input_thread;
     user_input_args_t *user_input_args = malloc(sizeof(user_input_args_t));
     setup_user_input_args(user_input_args, &client);
     pthread_create(&user_input_thread, NULL, user_input, user_input_args);
     pthread_detach(user_input_thread);
 
-    //spawn listner
+    //spawn listener thread
     pthread_t listener_thread;
     cli_listener_args_t *cli_listener_args = malloc(sizeof(cli_listener_args_t));
     setup_cli_listner_args(cli_listener_args, &client, &task_queue);
     pthread_create(&listener_thread, NULL, cli_listener, cli_listener_args);
-    pthread_detach(listener_thread); //?
+    pthread_detach(listener_thread);
 
     //spawn queue manager thread
     pthread_t queue_manager_thread;
