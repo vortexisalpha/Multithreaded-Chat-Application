@@ -168,6 +168,7 @@ void *chat_display(void *arg){
     return NULL;
 }
 
+//pre-connection user input thread handles input before connected
 void *user_input_pre_connection(void *arg){
     user_input_args_t* input_args = (user_input_args_t*)arg;
     char input[MAX_LEN];
@@ -177,7 +178,14 @@ void *user_input_pre_connection(void *arg){
     sleep(1);
 
     while(1){
-        //read input
+        //check if client connected
+        pthread_mutex_lock(&client->connection_mutex);
+        while(client->connected == true){
+            //sleep until disconnected
+            pthread_cond_wait(&client->connection_cond, &client->connection_mutex);
+        }
+        pthread_mutex_unlock(&client->connection_mutex);
+        
         if (fgets(input, sizeof(input), stdin) != NULL) {
             input[strcspn(input, "\n")] = 0; // remove newline
             
@@ -188,9 +196,18 @@ void *user_input_pre_connection(void *arg){
                 exit(0);
             }
             
-            //send to server
-            if (strlen(input) > 0) {
-                if_connect_command_connect(input);
+            //check if it's a connection command
+            if (strncmp(input, "conn$ ", 6) == 0) {
+                //extract username as everything after "conn$ "
+                char* username = input + 6;
+                if (strlen(username) > 0) {
+                    send_connect_request(client, username);
+                } else {
+                    printf("Error: Username cannot be empty.\n");
+                }
+            } else if (strlen(input) > 0) {
+                //not a valid pre connection command
+                printf("Error: Not connected.\n");
             }
         }
     }
