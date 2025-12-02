@@ -270,7 +270,7 @@ void *user_input(void *arg){
             if (strcmp(input, "disconn$") == 0) {
                 //send disconnect to server
                 udp_socket_write(client->sd, &client->server_addr, input, strlen(input) + 1);
-                
+                printf("Disconnecting...\n");
                 //server will send disconnresponse$ which will trigger execute_disconnect_response()
                 //that function will set connected=false and signal condition variable
                 //so this thread will loop back and go to sleep
@@ -278,6 +278,9 @@ void *user_input(void *arg){
             //send other commands to server
             else if (strlen(input) > 0) {
                 udp_socket_write(client->sd, &client->server_addr, input, strlen(input) + 1);
+                //reprint prompt for next command
+                printf("[%s] > ", client->name);
+                fflush(stdout);
             }
         }
     }
