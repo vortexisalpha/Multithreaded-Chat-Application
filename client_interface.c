@@ -54,11 +54,12 @@ void send_connect_request(client_t * client, char* username){
     char client_request[BUFFER_SIZE];
     snprintf(client_request, BUFFER_SIZE, "conn$ %s", username);
     
+    printf("[DEBUG] Sending '%s' to port %d (sd=%d)\n", client_request, SERVER_PORT, client->sd);
     int rc = udp_socket_write(client->sd, &client->server_addr, client_request, strlen(client_request) + 1);
     if (rc <= 0) {
-        printf("Error: Failed to send connection request\n");
+        printf("Error: Failed to send connection request (rc=%d)\n", rc);
     } else {
-        printf("Connection request sent for username: %s\n", username);
+        printf("Connection request sent for username: %s (%d bytes sent)\n", username, rc);
     }
 }
 
@@ -74,34 +75,6 @@ void message_flash(char * message){
     }
 }
 
-/*
-
-void sayto(char who[], char message[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
-    strncpy(client_messages[*client_messages_count], who, MAX_LEN - 1); // copy who
-    strncpy(client_messages[*client_messages_count+1], message, sizeof(client_messages) - 1); // copy message
-    printf("You: (private to %s) %s\n", client_messages[*client_messages_count], client_messages[*client_messages_count+1]); // should I add a "private" label in the chat?
-    (*client_messages_count) += 2; // added "who", "msg"
-}
-
-void mute(char who[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
-    strncpy(client_messages[*client_messages_count], who, MAX_LEN - 1); 
-    print("You have muted %s\n", client_messages[*client_messages_count]); 
-    *client_messages_count ++; 
-}
-
-void unmute(char who[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
-    strncpy(client_messages[*client_messages_count], who, MAX_LEN - 1); 
-    print("You have muted %s\n", client_messages[*client_messages_count]); 
-    *client_messages_count ++; 
-}
-
-void rename(char name[], char client_messages[MAX_MSGS][MAX_LEN], int * client_messages_count, client_t *client){
-    strncpy(client_messages[*client_messages_count], name, MAX_LEN - 1); 
-    print("You have requested to rename to: %s\n", client_messages[*client_messages_count]); 
-    *client_messages_count ++; 
-
-}
-*/ 
 
 //reads socket and appends to queue
 void *cli_listener(void *arg){
@@ -202,6 +175,15 @@ void *user_input_pre_connection(void *arg){
         }
         pthread_mutex_unlock(&client->connection_mutex);
         
+        //double check before blocking on fgets in case connection happened during unlock
+        pthread_mutex_lock(&client->connection_mutex);
+        bool is_connected = client->connected;
+        pthread_mutex_unlock(&client->connection_mutex);
+        
+        if (is_connected) {
+            continue; //connection happene so loop back to wait
+        }
+        
         if (fgets(input, sizeof(input), stdin) != NULL) {
             input[strcspn(input, "\n")] = 0; // remove newline
             
@@ -222,6 +204,8 @@ void *user_input_pre_connection(void *arg){
                         init_client_socket(client);
                     }
                     send_connect_request(client, username);
+                    //give server time to respond before reading next input
+                    usleep(100000); //100ms
                 } else {
                     printf("Error: Username cannot be empty.\n");
                 }
@@ -252,6 +236,15 @@ void *user_input(void *arg){
             pthread_cond_wait(&client->connection_cond, &client->connection_mutex);
         }
         pthread_mutex_unlock(&client->connection_mutex);
+        
+        //double-check before blocking on fgets in case disconnection happened during unlock
+        pthread_mutex_lock(&client->connection_mutex);
+        bool is_connected = client->connected;
+        pthread_mutex_unlock(&client->connection_mutex);
+        
+        if (!is_connected) {
+            continue; //disconnection happened, loop back to wait
+        }
         
         //read input only when connected
         if (fgets(input, sizeof(input), stdin) != NULL) {

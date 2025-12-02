@@ -43,7 +43,10 @@ void *listener(void *arg){
         int rc = udp_socket_read(listener_args->sd, &client_address, client_request, BUFFER_SIZE);
 
         if (rc > 0){
+            printf("[DEBUG] Server received: '%s' (%d bytes)\n", client_request, rc);
             q_append(listener_args->task_queue, client_request, &client_address); // this includes queue full sleep for thread
+        } else if (rc < 0) {
+            printf("[DEBUG] udp_socket_read error: %d\n", rc);
         }
     }
 }
