@@ -215,7 +215,7 @@ void *user_input_pre_connection(void *arg){
     return NULL;
 }
 
-// user input thread handles user typing and sending
+//post connection user input thread handles input after connected
 void *user_input(void *arg){
     user_input_args_t* input_args = (user_input_args_t*)arg;
     char input[MAX_LEN];
@@ -225,19 +225,41 @@ void *user_input(void *arg){
     sleep(1);
 
     while(1){
-        //read input
+        //check if client connected
+        pthread_mutex_lock(&client->connection_mutex);
+        while(client->connected == false){
+            //sleep until connected
+            pthread_cond_wait(&client->connection_cond, &client->connection_mutex);
+        }
+        pthread_mutex_unlock(&client->connection_mutex);
+        
+        //read input only when connected
         if (fgets(input, sizeof(input), stdin) != NULL) {
             input[strcspn(input, "\n")] = 0; // remove newline
             
             if (strcmp(input, ":q") == 0) {
+                //send disconnect before quitting
+                char disconn_msg[] = "disconn$";
+                udp_socket_write(client->sd, &client->server_addr, disconn_msg, strlen(disconn_msg) + 1);
+                sleep(1); // give server time to process
+                
                 //exit alternate screen buffer and return to normal terminal
                 printf("\033[?1049l");
                 printf("Exiting...\n");
                 exit(0);
             }
             
-            //send to server
-            if (strlen(input) > 0 && client->connected) {
+            //check if disconnect command
+            if (strcmp(input, "disconn$") == 0) {
+                //send disconnect to server
+                udp_socket_write(client->sd, &client->server_addr, input, strlen(input) + 1);
+                
+                //server will send disconnresponse$ which will trigger execute_disconnect_response()
+                //that function will set connected=false and signal condition variable
+                //so this thread will loop back and go to sleep
+            }
+            //send other commands to server
+            else if (strlen(input) > 0) {
                 udp_socket_write(client->sd, &client->server_addr, input, strlen(input) + 1);
             }
         }
