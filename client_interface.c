@@ -28,6 +28,44 @@ void tokenise_input(char input[] ,char *args[]){
 }
 
 
+// Initialize socket without authenticating
+void init_client_socket(client_t * client){
+    // Open socket - OS assigns unused port
+    int sd = udp_socket_open(0);
+    if (sd < 0) {
+        printf("Error: Failed to open socket\n");
+        return;
+    }
+    
+    // Set up server address
+    struct sockaddr_in server_addr;
+    int rc = set_socket_addr(&server_addr, "127.0.0.1", SERVER_PORT);
+    if (rc < 0) {
+        printf("Error: Failed to set server address\n");
+        close(sd);
+        return;
+    }
+    
+    // Save socket info (but don't set connected=true yet)
+    client->sd = sd;
+    client->server_addr = server_addr;
+    printf("Socket initialized. Ready to connect.\n");
+}
+
+// Send connection request to server
+void send_connect_request(client_t * client, char* username){
+    char client_request[BUFFER_SIZE];
+    snprintf(client_request, BUFFER_SIZE, "conn$ %s", username);
+    
+    int rc = udp_socket_write(client->sd, &client->server_addr, client_request, strlen(client_request) + 1);
+    if (rc <= 0) {
+        printf("Error: Failed to send connection request\n");
+    } else {
+        printf("Connection request sent for username: %s\n", username);
+    }
+}
+
+// OLD function - kept for reference, will be removed later
 void connect_to_server(char message[], client_t * client){
     // os has built in system to assign an unused port -> set udp_socket_open param to 0
 
@@ -216,9 +254,75 @@ void *user_input(void *arg){
     return NULL;
 }
 
+// Handle connection success response from server
+void execute_connect_response(command_t *cmd, client_t * client, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
+    char* username = cmd->args[0];
+    
+    pthread_mutex_lock(&client->connection_mutex);
+    
+    // Set connection state
+    client->connected = true;
+    strcpy(client->name, username);
+    
+    // Wake up the post-connection input thread
+    pthread_cond_signal(&client->connection_cond);
+    
+    pthread_mutex_unlock(&client->connection_mutex);
+    
+    // Trigger chat display update to show new prompt
+    pthread_mutex_lock(message_mutex);
+    pthread_cond_signal(message_update_cond);
+    pthread_mutex_unlock(message_mutex);
+    
+    printf("Successfully connected as: %s\n", username);
+}
+
+// Handle connection failure response from server
+void execute_connect_failed(command_t *cmd, client_t * client){
+    char* error_message = cmd->args[0];
+    printf("Connection failed: %s\n", error_message);
+    printf("Please try again with a different username.\n");
+}
+
+// Handle disconnect response from server
+void execute_disconnect_response(client_t * client, int * message_count, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
+    pthread_mutex_lock(&client->connection_mutex);
+    
+    // Set connection state to false
+    client->connected = false;
+    
+    // Close the socket
+    if (client->sd > 0) {
+        close(client->sd);
+        client->sd = 0;
+    }
+    
+    // Wake up the pre-connection input thread
+    pthread_cond_signal(&client->connection_cond);
+    
+    pthread_mutex_unlock(&client->connection_mutex);
+    
+    // Clear chat history
+    pthread_mutex_lock(message_mutex);
+    *message_count = 0;
+    pthread_cond_signal(message_update_cond);
+    pthread_mutex_unlock(message_mutex);
+    
+    printf("Disconnected from server.\n");
+}
+
 //execute server response. e.g say command
 void execute_server_command(command_t *cmd, client_t * client,  int * message_count, char (* messages)[MAX_LEN], pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     switch(cmd->kind){
+        case CONN_SUCCESS:
+            execute_connect_response(cmd, client, message_mutex, message_update_cond);
+            break;
+        case CONN_FAILED:
+            execute_connect_failed(cmd, client);
+            break;
+        case DISCONN_RESPONSE:
+            execute_disconnect_response(client, message_count, message_mutex, message_update_cond);
+            break;
         case SAY:
             say_exec(cmd, message_count, messages, message_mutex, message_update_cond);
             break;
