@@ -15,7 +15,8 @@ typedef enum {
     RENAME,
     DISCONN,
     DISCONN_RESPONSE, // Server response: disconnection confirmed
-    KICK
+    KICK,
+    UNKNOWN          // Unknown/invalid command
 } command_kind_t;
 
 typedef struct {
@@ -48,8 +49,8 @@ void command_handler(command_t *command, char *args[]){
     } else if (strcmp(args[0], "kick") == 0) {
         command->kind = KICK;
     } else {
-        // unknown command -> undefined behaviour atm
-        return;
+        // unknown command
+        command->kind = UNKNOWN;
     }
 
     int i = 1;   // skip command name
