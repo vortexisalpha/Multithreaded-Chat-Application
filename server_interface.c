@@ -276,6 +276,23 @@ void *kick(void *args){
     return NULL;
 }
 
+void *handle_unknown_command(void *args){
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args;
+    
+    //send error message back to client
+    char server_response[MAX_MESSAGE]; 
+    snprintf(server_response, MAX_MESSAGE, "error$ Unknown command"); 
+    int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, MAX_MESSAGE);
+    
+    printf("Invalid command received from client\n");
+    
+    //free
+    free(cmd_args->command);
+    free(cmd_args->from_addr);
+    free(args);
+    return NULL;
+}
+
 
 
 void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_in* from_addr, client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList){
@@ -308,7 +325,10 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
             break; 
         case KICK:
             pthread_create(&t, NULL, kick, execute_args); 
-            break; 
+            break;
+        case UNKNOWN:
+            pthread_create(&t, NULL, handle_unknown_command, execute_args);
+            break;
         default:
             free(command);
             free(from_addr);
