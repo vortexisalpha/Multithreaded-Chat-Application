@@ -96,10 +96,14 @@ client_node_t* find_client(client_node_t** head, char who[]){
 }
 
 void *sayto(void *args){
-    // Example: SAYTO Alice Hello!
-    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    // Example: SAYTO Alice Hello everyone how are you!
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args;
     char* to_who = cmd_args->command->args[0]; 
-    char* message = cmd_args->command->args[1]; 
+    
+    //join args starting from index 1
+    char message[MAX_MESSAGE];
+    join_args(cmd_args->command->args, 1, message, MAX_MESSAGE);
+    
     client_node_t* client; 
     client_node_t* from_who; 
     Monitor_t* client_linkedList = cmd_args->client_linkedList; 
@@ -132,8 +136,12 @@ void *sayto(void *args){
 
 void *say(void *args){
     // Example: SAY Hello everyone!
-    execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* message = cmd_args->command->args[0]; 
+    execute_command_args_t* cmd_args = (execute_command_args_t*)args;
+    
+    //join all arguments into full message
+    char message[MAX_MESSAGE];
+    join_args(cmd_args->command->args, 0, message, MAX_MESSAGE);
+    
     client_node_t* node = *(cmd_args->head); 
     client_node_t* from_who; 
     reader_checkin(cmd_args->client_linkedList);
