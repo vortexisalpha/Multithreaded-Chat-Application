@@ -224,7 +224,12 @@ void *disconnect(void *args){
 
 void *mute(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    //snprintf(server_response, SIZE,"mute$ alice")
+    char* username = cmd_args->command->args[0];
+    
+    //send mute command back to client so they can add to their mute_table
+    char server_response[MAX_MESSAGE];
+    snprintf(server_response, MAX_MESSAGE, "mute$ %s", username);
+    udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, MAX_MESSAGE);
     
     free(cmd_args->command);
     free(cmd_args->from_addr);
@@ -234,7 +239,13 @@ void *mute(void *args){
 
 void *unmute(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    //snprintf(server_response, SIZE,"unmute$ alice")
+    char* username = cmd_args->command->args[0];
+    
+    //send unmute command back to client so they can remove from their mute_table
+    char server_response[MAX_MESSAGE];
+    snprintf(server_response, MAX_MESSAGE, "unmute$ %s", username);
+    udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, MAX_MESSAGE);
+    
     free(cmd_args->command);
     free(cmd_args->from_addr);
     free(cmd_args);
@@ -281,7 +292,7 @@ void *kick(void *args){
         
         // send everyone "(Whom) has been removed from the chat"
         char broadcast_message[RESPONSE_BUFFER_SIZE];
-        snprintf(broadcast_message, RESPONSE_BUFFER_SIZE, "say$ server: %s has been kicked", name);
+        snprintf(broadcast_message, RESPONSE_BUFFER_SIZE, "say$ SERVER: %s has been kicked", name);
         
         reader_checkin(cmd_args->client_linkedList);
         client_node_t *node = *(cmd_args->head);
