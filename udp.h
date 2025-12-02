@@ -56,6 +56,10 @@ int udp_socket_open(int port)
     // 1. Create a UDP socket and obtain a socket descriptor
     // (sd) to it
     int sd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sd < 0) {
+        perror("socket creation failed");
+        return -1;
+    }
 
     // 2. Create an address variable to associate
     // (or bind) with the socket
@@ -71,8 +75,13 @@ int udp_socket_open(int port)
     // created earlier.
     /// Note: binding with 0.0.0.0 means that the socket will accept
     // packets coming in to any interface (ip address) of this machine
-    bind(sd, (struct sockaddr *)&this_addr, sizeof(this_addr));
+    if (bind(sd, (struct sockaddr *)&this_addr, sizeof(this_addr)) < 0) {
+        perror("bind failed");
+        close(sd);
+        return -1;
+    }
     
+    printf("Socket bound successfully to port %d\n", port);
     return sd; // return the socket descriptor
 }
 
