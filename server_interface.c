@@ -139,7 +139,7 @@ void *say(void *args){
     reader_checkin(cmd_args->client_linkedList); 
     while(node != NULL){ 
         char server_response[MAX_MESSAGE]; 
-        snprintf(server_response, MAX_MESSAGE, "say$ %s:(private message) %s", from_who->client_name, message); 
+        snprintf(server_response, MAX_MESSAGE, "say$ %s: %s", from_who->client_name, message); 
         int rc = udp_socket_write(cmd_args->sd, &node->client_address, server_response, MAX_MESSAGE); 
         node = node->next; 
     }

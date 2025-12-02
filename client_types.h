@@ -12,6 +12,10 @@ typedef struct {
     struct sockaddr_in server_addr;
     struct sockaddr_in responder_addr;
     hash_node_t *mute_table[TABLE_SIZE];
+    
+    //mutex for if client is connected
+    pthread_mutex_t connection_mutex;
+    pthread_cond_t connection_cond;
 } client_t;
 
 
@@ -21,6 +25,9 @@ void setup_client(client_t* client){
     for (int i = 0; i < TABLE_SIZE; i++) {
         client->mute_table[i] = NULL;
     }
+    
+    pthread_mutex_init(&client->connection_mutex, NULL);
+    pthread_cond_init(&client->connection_cond, NULL);
 }
 
 void connect_command(client_t* client, char name[NAME_SIZE]){

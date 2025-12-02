@@ -155,6 +155,36 @@ void *chat_display(void *arg){
     return NULL;
 }
 
+void *user_input_pre_connection(void *arg){
+    user_input_args_t* input_args = (user_input_args_t*)arg;
+    char input[MAX_LEN];
+    client_t* client = input_args->client;
+    
+    //give display thread time to set up screen
+    sleep(1);
+
+    while(1){
+        //read input
+        if (fgets(input, sizeof(input), stdin) != NULL) {
+            input[strcspn(input, "\n")] = 0; // remove newline
+            
+            if (strcmp(input, ":q") == 0) {
+                //exit alternate screen buffer and return to normal terminal
+                printf("\033[?1049l");
+                printf("Exiting...\n");
+                exit(0);
+            }
+            
+            //send to server
+            if (strlen(input) > 0) {
+                if_connect_command_connect(input);
+            }
+        }
+    }
+    
+    return NULL;
+}
+
 // user input thread handles user typing and sending
 void *user_input(void *arg){
     user_input_args_t* input_args = (user_input_args_t*)arg;
@@ -177,7 +207,7 @@ void *user_input(void *arg){
             }
             
             //send to server
-            if (strlen(input) > 0) {
+            if (strlen(input) > 0 && client->connected) {
                 udp_socket_write(client->sd, &client->server_addr, input, strlen(input) + 1);
             }
         }
