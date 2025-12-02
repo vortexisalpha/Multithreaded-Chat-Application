@@ -169,10 +169,21 @@ void *disconnect(void *args){
     client_node_t* node;
     char* name; 
     struct sockaddr_in* client_address; 
+    
+    //find client by their address
     reader_checkin(cmd_args->client_linkedList); 
-    node = find_client_by_address(cmd_args->head, client_address); 
+    node = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
+    if(node == NULL){
+        reader_checkout(cmd_args->client_linkedList);
+        free(cmd_args->command);
+        free(cmd_args->from_addr);
+        free(args);
+        return NULL;
+    }
     name = node->client_name; 
     reader_checkout(cmd_args->client_linkedList); 
+    
+    //remove client from list
     writer_checkin(cmd_args->client_linkedList); 
     // enter critical section
     client_address = remove_client_from_list(cmd_args->head, cmd_args->tail, name); 
@@ -183,8 +194,11 @@ void *disconnect(void *args){
         char server_response[MAX_MESSAGE]; 
         snprintf(server_response, MAX_MESSAGE, "disconnresponse$"); 
         int rc = udp_socket_write(cmd_args->sd, client_address, server_response, MAX_MESSAGE); 
+        free(client_address);
+    } else {
+        writer_checkout(cmd_args->client_linkedList);
     }
-    free(client_address);
+    
     free(cmd_args->command);
     free(cmd_args->from_addr);
     free(args);

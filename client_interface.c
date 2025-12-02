@@ -217,6 +217,10 @@ void *user_input_pre_connection(void *arg){
                 //extract username as everything after "conn$ "
                 char* username = input + 6;
                 if (strlen(username) > 0) {
+                    //reinitialize socket if closed after disconnect
+                    if (client->sd == 0) {
+                        init_client_socket(client);
+                    }
                     send_connect_request(client, username);
                 } else {
                     printf("Error: Username cannot be empty.\n");
