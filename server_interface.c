@@ -116,10 +116,15 @@ void *sayto(void *args){
     reader_checkout(client_linkedList); 
     
 
-    // string making
-    char server_response[RESPONSE_BUFFER_SIZE]; 
-    snprintf(server_response, RESPONSE_BUFFER_SIZE, "say$ %s:(private message) %s", from_who->client_name, message); 
-    int rc = udp_socket_write(cmd_args->sd, &(client->client_address), server_response, RESPONSE_BUFFER_SIZE);
+    //send to reciever
+    char server_reciever_response[RESPONSE_BUFFER_SIZE]; 
+    snprintf(server_reciever_response, RESPONSE_BUFFER_SIZE, "say$ %s:(private message) %s", from_who->client_name, message); 
+    int rc_r = udp_socket_write(cmd_args->sd, &(client->client_address), server_reciever_response, RESPONSE_BUFFER_SIZE);
+
+    //send to client
+    char server_sender_responce[RESPONSE_BUFFER_SIZE];
+    snprintf(server_sender_responce, RESPONSE_BUFFER_SIZE, "say$ you to %s:(private message) %s", to_who, message);
+    int rc_s = udp_socket_write(cmd_args->sd, &(from_who->client_address), server_sender_responce, RESPONSE_BUFFER_SIZE);
 
     // Free heap-allocated resources
     free(cmd_args->command);
@@ -269,13 +274,22 @@ void *kick(void *args){
         writer_checkout(cmd_args->client_linkedList); 
         // writer of linked list
 
-        // send client "You have been removed from the chat"
-        char server_response[MAX_MESSAGE]; 
-        snprintf(server_response, MAX_MESSAGE, "disconnresponse$"); 
-        int rc = udp_socket_write(cmd_args->sd, client_address, server_response, MAX_MESSAGE);
-
-
+        // send reciever
+        char server_reciever_response[MAX_MESSAGE]; 
+        snprintf(server_reciever_response, MAX_MESSAGE, "disconnresponse$"); 
+        int rc = udp_socket_write(cmd_args->sd, client_address, server_reciever_response, MAX_MESSAGE);
+        
         // send everyone "(Whom) has been removed from the chat"
+        char broadcast_message[RESPONSE_BUFFER_SIZE];
+        snprintf(broadcast_message, RESPONSE_BUFFER_SIZE, "say$ server: %s has been kicked", name);
+        
+        reader_checkin(cmd_args->client_linkedList);
+        client_node_t *node = *(cmd_args->head);
+        while(node != NULL){
+            udp_socket_write(cmd_args->sd, &node->client_address, broadcast_message, RESPONSE_BUFFER_SIZE);
+            node = node->next;
+        }
+        reader_checkout(cmd_args->client_linkedList);
     }
     free(client_address);
     free(cmd_args->command);
