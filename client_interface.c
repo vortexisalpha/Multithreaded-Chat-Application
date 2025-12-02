@@ -123,7 +123,7 @@ void *cli_listener(void *arg){
     return NULL;
 }
 
-// chat display thread with adaptive growing display
+//chat display thread with adaptive growing display
 void *chat_display(void *arg){
     chat_display_args_t* chat_args = (chat_display_args_t*)arg;
     
@@ -134,11 +134,19 @@ void *chat_display(void *arg){
     printf("\033[2J\033[H"); // clear screen and move to home
     printf("Chat Messages:\n\n");
     printf("---------------------\n");
-    printf("> ");
+    
+    //display initial prompt based on connection state
+    pthread_mutex_lock(&chat_args->client->connection_mutex);
+    if (chat_args->client->connected) {
+        printf("[%s] > ", chat_args->client->name);
+    } else {
+        printf("[Not connected] > ");
+    }
+    pthread_mutex_unlock(&chat_args->client->connection_mutex);
     fflush(stdout);
 
     while(1){
-        //wait for new messages
+        //wait for new messages or connection state changes
         pthread_mutex_lock(chat_args->messages_mutex);
         pthread_cond_wait(chat_args->messages_cond, chat_args->messages_mutex);
         
@@ -159,7 +167,15 @@ void *chat_display(void *arg){
         }
         
         printf("\n---------------------\n");
-        printf("> ");
+        
+        //display prompt based on connection state
+        pthread_mutex_lock(&chat_args->client->connection_mutex);
+        if (chat_args->client->connected) {
+            printf("[%s] > ", chat_args->client->name);
+        } else {
+            printf("[Not connected] > ");
+        }
+        pthread_mutex_unlock(&chat_args->client->connection_mutex);
         fflush(stdout);
         
         pthread_mutex_unlock(chat_args->messages_mutex);
