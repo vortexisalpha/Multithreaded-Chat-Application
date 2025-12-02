@@ -208,10 +208,14 @@ void *user_input_pre_connection(void *arg){
                     usleep(100000); //100ms
                 } else {
                     printf("Error: Username cannot be empty.\n");
+                    printf("[Not connected] > ");
+                    fflush(stdout);
                 }
             } else if (strlen(input) > 0) {
                 //not a valid pre connection command
                 printf("Error: Not connected.\n");
+                printf("[Not connected] > ");
+                fflush(stdout);
             }
         }
     }
