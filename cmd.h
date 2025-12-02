@@ -6,12 +6,15 @@
 
 typedef enum {
     CONN,
+    CONN_SUCCESS,    // Server response: connection successful
+    CONN_FAILED,     // Server response: connection failed
     SAY,
     SAYTO,
     MUTE,
     UNMUTE,
     RENAME,
     DISCONN,
+    DISCONN_RESPONSE, // Server response: disconnection confirmed
     KICK
 } command_kind_t;
 
@@ -24,6 +27,10 @@ void command_handler(command_t *command, char *args[]){
     if (args == NULL || args[0] == NULL) return;
     if (strcmp(args[0], "conn") == 0) {
         command->kind = CONN;
+    } else if (strcmp(args[0], "connsuccess") == 0) {
+        command->kind = CONN_SUCCESS;
+    } else if (strcmp(args[0], "connfailed") == 0) {
+        command->kind = CONN_FAILED;
     } else if (strcmp(args[0], "say") == 0) {
         command->kind = SAY;
     } else if (strcmp(args[0], "sayto") == 0) {
@@ -36,6 +43,8 @@ void command_handler(command_t *command, char *args[]){
         command->kind = RENAME;
     } else if (strcmp(args[0], "disconn") == 0) {
         command->kind = DISCONN;
+    } else if (strcmp(args[0], "disconnresponse") == 0) {
+        command->kind = DISCONN_RESPONSE;
     } else if (strcmp(args[0], "kick") == 0) {
         command->kind = KICK;
     } else {
@@ -60,6 +69,7 @@ void command_handler(command_t *command, char *args[]){
     }
 
     /* Some example of the command call
+        CLIENT TO SERVER:
         1. conn$ client_name (arg0~1)
         2. say$ msg (arg0~1)
         3. sayto$ recipient_name msg (arg0~2)
@@ -68,6 +78,15 @@ void command_handler(command_t *command, char *args[]){
         6. unmute$ client_name (arg0~1)
         7. rename$ new_name (arg0~1)
         8. kick$ client_name (arg0~1)
+        
+        SERVER TO CLIENT:
+        1. connsuccess$ client_name (arg0~1) - connection successful
+        2. connfailed$ error_message (arg0~1) - connection failed
+        3. disconnresponse$ (arg0) - disconnect confirmed
+        4. say$ sender: message (arg0~N) - broadcast message
+        5. sayto$ sender: message (arg0~N) - broadcast message
+        6. mute$ name (arg0) - add to mute list
+        7. unmute$ name (arg0) - remove from mute list
     */
 }
 #endif
