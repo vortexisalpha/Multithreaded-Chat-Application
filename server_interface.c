@@ -69,9 +69,9 @@ void *connect_to_server(void* args){
     add_client_to_list(cmd_args->head, cmd_args->tail, cmd_args->from_addr, name);
     writer_checkout(client_linkedList); 
     char server_response[BUFFER_SIZE];
-    sprintf(server_response, "[SERVER RESPONSE]: CONNECTED %s", name);
+    sprintf(server_response, "connsuccess$ %s", name);
     int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, MAX_MESSAGE);
-    printf("Request served...\n");
+    printf("Request served: Connection successful for %s\n", name);
 
     // Free heap-allocated resources
     free(cmd_args->command);
@@ -139,7 +139,7 @@ void *say(void *args){
     reader_checkin(cmd_args->client_linkedList); 
     while(node != NULL){ 
         char server_response[MAX_MESSAGE]; 
-        snprintf(server_response, MAX_MESSAGE, "say$ %s: %s", from_who->client_name, message); 
+        snprintf(server_response, MAX_MESSAGE, "say$ %s:(private message) %s", from_who->client_name, message); 
         int rc = udp_socket_write(cmd_args->sd, &node->client_address, server_response, MAX_MESSAGE); 
         node = node->next; 
     }
@@ -181,7 +181,7 @@ void *disconnect(void *args){
 
         // server response
         char server_response[MAX_MESSAGE]; 
-        snprintf(server_response, MAX_MESSAGE, "[SERVER RESPONSE]: You have disconnected"); 
+        snprintf(server_response, MAX_MESSAGE, "disconnresponse$"); 
         int rc = udp_socket_write(cmd_args->sd, client_address, server_response, MAX_MESSAGE); 
     }
     free(client_address);
@@ -213,12 +213,13 @@ void *unmute(void *args){
 
 void *rename_client(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* to_who = cmd_args->command->args[0]; 
+    char* name = cmd_args->command->args[0]; 
+    char* to_who = cmd_args->command->args[1]; 
     client_node_t *client; 
 
     writer_checkin(cmd_args->client_linkedList); 
     // critical section
-    client = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
+    client = find_client(cmd_args->head, name); 
     strcpy(client->client_name, to_who); 
 
     writer_checkout(cmd_args->client_linkedList);
@@ -245,7 +246,7 @@ void *kick(void *args){
 
         // send client "You have been removed from the chat"
         char server_response[MAX_MESSAGE]; 
-        snprintf(server_response, MAX_MESSAGE, "[SERVER RESPONSE]: You have disconnected"); 
+        snprintf(server_response, MAX_MESSAGE, "disconnresponse$"); 
         int rc = udp_socket_write(cmd_args->sd, client_address, server_response, MAX_MESSAGE);
 
 
