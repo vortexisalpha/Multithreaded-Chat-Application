@@ -34,10 +34,8 @@ void *listener(void *arg){
     printf("Server is listening on port %d\n", SERVER_PORT);
     while (1) 
     {
-        // Storage for request and response messages
         char client_request[BUFFER_SIZE];
 
-        // Variable to store incoming client's IP address and port
         struct sockaddr_in client_address;
     
         int rc = udp_socket_read(listener_args->sd, &client_address, client_request, BUFFER_SIZE);
@@ -96,7 +94,7 @@ client_node_t* find_client(client_node_t** head, char who[]){
 }
 
 void *sayto(void *args){
-    // Example: SAYTO Alice Hello everyone how are you!
+    // Example: SAYTO Alice Hello everyone how are you
     execute_command_args_t* cmd_args = (execute_command_args_t*)args;
     char* to_who = cmd_args->command->args[0]; 
     
@@ -133,7 +131,7 @@ void *sayto(void *args){
     }
 
 
-    // Free heap-allocated resources
+    //free heap allocated resources
     free(cmd_args->command);
     free(cmd_args->from_addr);
     free(cmd_args);
