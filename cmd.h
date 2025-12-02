@@ -3,6 +3,7 @@
 
 #include "udp.h"
 #define MAX_MESSAGE 256
+#define RESPONSE_BUFFER_SIZE (MAX_MESSAGE + 256)  // Buffer for formatted responses with usernames
 
 typedef enum {
     CONN,

@@ -117,9 +117,9 @@ void *sayto(void *args){
     
 
     // string making
-    char server_response[MAX_MESSAGE]; 
-    snprintf(server_response, MAX_MESSAGE, "say$ %s:(private message) %s", from_who->client_name, message); 
-    int rc = udp_socket_write(cmd_args->sd, &(client->client_address), server_response, MAX_MESSAGE);
+    char server_response[RESPONSE_BUFFER_SIZE]; 
+    snprintf(server_response, RESPONSE_BUFFER_SIZE, "say$ %s:(private message) %s", from_who->client_name, message); 
+    int rc = udp_socket_write(cmd_args->sd, &(client->client_address), server_response, RESPONSE_BUFFER_SIZE);
 
     // Free heap-allocated resources
     free(cmd_args->command);
@@ -149,9 +149,9 @@ void *say(void *args){
     reader_checkout(cmd_args->client_linkedList); 
     reader_checkin(cmd_args->client_linkedList); 
     while(node != NULL){ 
-        char server_response[MAX_MESSAGE]; 
-        snprintf(server_response, MAX_MESSAGE, "say$ %s: %s", from_who->client_name, message); 
-        int rc = udp_socket_write(cmd_args->sd, &node->client_address, server_response, MAX_MESSAGE); 
+        char server_response[RESPONSE_BUFFER_SIZE]; 
+        snprintf(server_response, RESPONSE_BUFFER_SIZE, "say$ %s: %s", from_who->client_name, message); 
+        int rc = udp_socket_write(cmd_args->sd, &node->client_address, server_response, RESPONSE_BUFFER_SIZE); 
         node = node->next; 
     }
     reader_checkout(cmd_args->client_linkedList);
