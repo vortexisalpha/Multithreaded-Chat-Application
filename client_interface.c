@@ -315,6 +315,21 @@ void execute_connect_failed(command_t *cmd, client_t * client){
     printf("Please try again with a different username.\n");
 }
 
+//handle error from server
+void execute_error_response(command_t *cmd, client_t * client){
+    char* error_message = cmd->args[0];
+    printf("Error from server: %s\n", error_message);
+    
+    pthread_mutex_lock(&client->connection_mutex);
+    if (client->connected) {
+        printf("[%s] > ", client->name);
+    } else {
+        printf("[Not connected] > ");
+    }
+    pthread_mutex_unlock(&client->connection_mutex);
+    fflush(stdout);
+}
+
 //handle disconnect
 void execute_disconnect_response(client_t * client, int * message_count, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     pthread_mutex_lock(&client->connection_mutex);
@@ -350,6 +365,9 @@ void execute_server_command(command_t *cmd, client_t * client,  int * message_co
             break;
         case DISCONN_RESPONSE:
             execute_disconnect_response(client, message_count, message_mutex, message_update_cond);
+            break;
+        case ERROR:
+            execute_error_response(cmd, client);
             break;
         case SAY:
             say_exec(cmd, message_count, messages, message_mutex, message_update_cond);
