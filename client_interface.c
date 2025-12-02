@@ -310,14 +310,14 @@ void execute_connect_response(command_t *cmd, client_t * client, pthread_mutex_t
 
 //handle connection failure
 void execute_connect_failed(command_t *cmd, client_t * client){
-    char* error_message = cmd->args[0];
+    char* error_message = join(cmd->args);
     printf("Connection failed: %s\n", error_message);
     printf("Please try again with a different username.\n");
 }
 
 //handle error from server
 void execute_error_response(command_t *cmd, client_t * client){
-    char* error_message = cmd->args[0];
+    char* error_message = join(cmd->args);
     printf("Error from server: %s\n", error_message);
     
     pthread_mutex_lock(&client->connection_mutex);
@@ -336,10 +336,12 @@ void execute_disconnect_response(client_t * client, int * message_count, pthread
     
     //set connection state to false and close socket
     client->connected = false;
+    /*
     if (client->sd > 0) {
         close(client->sd);
         client->sd = 0;
     }
+    */
     
     //wake up the pre connection input thread
     pthread_cond_signal(&client->connection_cond);

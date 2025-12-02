@@ -90,7 +90,7 @@ client_node_t* find_client(client_node_t** head, char who[]){
     }
     if(iter == NULL){
         printf("Error, client not found\n"); 
-        exit(EXIT_FAILURE); 
+        return NULL;
     }
     return iter; 
 }
@@ -114,17 +114,24 @@ void *sayto(void *args){
     client = find_client(cmd_args->head, to_who); 
     from_who = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
     reader_checkout(client_linkedList); 
-    
 
-    //send to reciever
-    char server_reciever_response[RESPONSE_BUFFER_SIZE]; 
-    snprintf(server_reciever_response, RESPONSE_BUFFER_SIZE, "say$ %s:(private message) %s", from_who->client_name, message); 
-    int rc_r = udp_socket_write(cmd_args->sd, &(client->client_address), server_reciever_response, RESPONSE_BUFFER_SIZE);
+    if (client != NULL){
+        //send to reciever
+        char server_reciever_response[RESPONSE_BUFFER_SIZE]; 
+        snprintf(server_reciever_response, RESPONSE_BUFFER_SIZE, "say$ %s:(private message) %s", from_who->client_name, message); 
+        int rc_r = udp_socket_write(cmd_args->sd, &(client->client_address), server_reciever_response, RESPONSE_BUFFER_SIZE);
 
-    //send to client
-    char server_sender_responce[RESPONSE_BUFFER_SIZE];
-    snprintf(server_sender_responce, RESPONSE_BUFFER_SIZE, "say$ you to %s:(private message) %s", to_who, message);
-    int rc_s = udp_socket_write(cmd_args->sd, &(from_who->client_address), server_sender_responce, RESPONSE_BUFFER_SIZE);
+        //send to client
+        char server_sender_responce[RESPONSE_BUFFER_SIZE];
+        snprintf(server_sender_responce, RESPONSE_BUFFER_SIZE, "say$ you to %s:(private message) %s", to_who, message);
+        int rc_s = udp_socket_write(cmd_args->sd, &(from_who->client_address), server_sender_responce, RESPONSE_BUFFER_SIZE);
+    } else{
+        //send to client
+        char server_sender_responce[RESPONSE_BUFFER_SIZE];
+        snprintf(server_sender_responce, RESPONSE_BUFFER_SIZE, "error$ User not found. (%s)", to_who);
+        int rc_s = udp_socket_write(cmd_args->sd, &(from_who->client_address), server_sender_responce, RESPONSE_BUFFER_SIZE);
+    }
+
 
     // Free heap-allocated resources
     free(cmd_args->command);
@@ -252,6 +259,8 @@ void *unmute(void *args){
     return NULL;
 }
 
+
+//INCORRECT RENAME USAGE
 void *rename_client(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
     char* name = cmd_args->command->args[0]; 
