@@ -4,7 +4,6 @@
 #include "udp.h"
 #include "cmd.h"
 #include "client_types.h"
-#include <pthread.h>
 
 #define SAFETY_PORT 10000
 
@@ -288,74 +287,6 @@ void *user_input(void *arg){
     return NULL;
 }
 
-//handle connection success
-void execute_connect_response(command_t *cmd, client_t * client, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
-    char* username = cmd->args[0];
-    
-    pthread_mutex_lock(&client->connection_mutex);
-
-    client->connected = true;
-    strcpy(client->name, username);
-    
-    pthread_cond_signal(&client->connection_cond); // signal connected to wake up true listner thread
-    pthread_mutex_unlock(&client->connection_mutex);
-    
-    // Trigger chat display update to show new prompt
-    pthread_mutex_lock(message_mutex);
-    pthread_cond_signal(message_update_cond);
-    pthread_mutex_unlock(message_mutex);
-    
-    printf("Successfully connected as: %s\n", username);
-}
-
-//handle connection failure
-void execute_connect_failed(command_t *cmd, client_t * client){
-    char* error_message = join(cmd->args);
-    printf("Connection failed: %s\n", error_message);
-    printf("Please try again with a different username.\n");
-}
-
-//handle error from server
-void execute_error_response(command_t *cmd, client_t * client){
-    char* error_message = join(cmd->args);
-    printf("Error from server: %s\n", error_message);
-    
-    pthread_mutex_lock(&client->connection_mutex);
-    if (client->connected) {
-        printf("[%s] > ", client->name);
-    } else {
-        printf("[Not connected] > ");
-    }
-    pthread_mutex_unlock(&client->connection_mutex);
-    fflush(stdout);
-}
-
-//handle disconnect
-void execute_disconnect_response(client_t * client, int * message_count, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
-    pthread_mutex_lock(&client->connection_mutex);
-    
-    //set connection state to false and close socket
-    client->connected = false;
-    /*
-    if (client->sd > 0) {
-        close(client->sd);
-        client->sd = 0;
-    }
-    */
-    
-    //wake up the pre connection input thread
-    pthread_cond_signal(&client->connection_cond);
-    pthread_mutex_unlock(&client->connection_mutex);
-    
-    //clear chat history
-    pthread_mutex_lock(message_mutex);
-    *message_count = 0;
-    pthread_cond_signal(message_update_cond);
-    pthread_mutex_unlock(message_mutex);
-    
-    printf("Disconnected from server.\n");
-}
-
 //execute server response. e.g say command
 void execute_server_command(command_t *cmd, client_t * client,  int * message_count, char (* messages)[MAX_LEN], pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     switch(cmd->kind){
@@ -379,6 +310,9 @@ void execute_server_command(command_t *cmd, client_t * client,  int * message_co
             break;
         case UNMUTE:
             unmute_exec(cmd, client, message_mutex, message_update_cond);
+            break;
+        case RENAME:
+            rename_exec(cmd, client, message_mutex, message_update_cond);
             break;
         default:
             break;

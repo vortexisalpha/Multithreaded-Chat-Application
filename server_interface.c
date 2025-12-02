@@ -74,7 +74,7 @@ void *connect_to_server(void* args){
     int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, MAX_MESSAGE);
     printf("Request served: Connection successful for %s\n", name);
 
-    // Free heap-allocated resources
+    //free heap allocated resources
     free(cmd_args->command);
     free(cmd_args->from_addr);
     free(args);
@@ -258,19 +258,27 @@ void *unmute(void *args){
 }
 
 
-//INCORRECT RENAME USAGE
 void *rename_client(void *args){
+    printf("[DEBUG] Rename hit\n");
+
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
-    char* name = cmd_args->command->args[0]; 
-    char* to_who = cmd_args->command->args[1]; 
+    struct sockaddr_in* cli_to_rename = cmd_args->from_addr;
+    char* new_name = cmd_args->command->args[0]; 
     client_node_t *client; 
 
     writer_checkin(cmd_args->client_linkedList); 
     // critical section
-    client = find_client(cmd_args->head, name); 
-    strcpy(client->client_name, to_who); 
+    client = find_client_by_address(cmd_args->head, cli_to_rename); 
+    printf("[DEBUG] Renaming %s to %s\n", client->client_name, new_name);
+
+    strcpy(client->client_name, new_name); 
 
     writer_checkout(cmd_args->client_linkedList);
+
+    char server_response[MAX_MESSAGE]; 
+    snprintf(server_response, MAX_MESSAGE, "rename$ %s", new_name); 
+    int rc = udp_socket_write(cmd_args->sd, cli_to_rename, server_response, MAX_MESSAGE);
+
     
     free(cmd_args->command);
     free(cmd_args->from_addr);
@@ -287,11 +295,9 @@ void *kick(void *args){
     writer_checkin(cmd_args->client_linkedList); 
     // enter critical section
     client_address = remove_client_from_list(cmd_args->head, cmd_args->tail, name); 
+    writer_checkout(cmd_args->client_linkedList); 
 
     if(client_address != NULL){
-        writer_checkout(cmd_args->client_linkedList); 
-        // writer of linked list
-
         // send reciever
         char server_reciever_response[MAX_MESSAGE]; 
         snprintf(server_reciever_response, MAX_MESSAGE, "disconnresponse$"); 
@@ -340,6 +346,7 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
     pthread_t t;
     execute_command_args_t *execute_args = malloc(sizeof(execute_command_args_t));
     setup_command_args(execute_args,sd,command, from_addr, head, tail, client_linkedList);
+    printf("[DEBUG] Found command kind: %d\n", command->kind);
     switch(command->kind){
         case CONN:{
             pthread_create(&t, NULL, connect_to_server, execute_args);
@@ -388,10 +395,10 @@ void *queue_manager(void* arg){
        
         struct sockaddr_in* from_addr = malloc(sizeof(struct sockaddr_in));
         q_pop(qm_args->task_queue, tokenised_command, from_addr);
-
+        
        
         command_t* cur_command = malloc(sizeof(command_t));
-        command_handler(cur_command, tokenised_command); 
+        command_handler(cur_command, tokenised_command);
         worker_thread_checkin(qm_args); 
         spawn_execute_command_threads(qm_args->sd, cur_command, from_addr, qm_args->head, qm_args->tail, qm_args->client_linkedList);
         worker_thread_checkout(qm_args); 

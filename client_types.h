@@ -2,6 +2,7 @@
 #include "queue.h"
 #include "cmd.h"
 #include "custom_hash_table.h"
+#include <pthread.h>
 
 
 //client
@@ -168,6 +169,17 @@ void unmute_exec(command_t* cmd, client_t * client, pthread_mutex_t* message_mut
 }
 
 
+void rename_exec(command_t* cmd, client_t * client, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
+    pthread_mutex_lock(message_mutex);
+
+    char* new_name = cmd->args[0];
+    strcpy(client->name, new_name);
+    printf("Successfully renamed as: %s\n", new_name);
+
+    pthread_cond_signal(message_update_cond);
+    pthread_mutex_unlock(message_mutex);
+}
+
 //handle connection success
 void execute_connect_response(command_t *cmd, client_t * client, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
     char* username = cmd->args[0];
@@ -209,6 +221,8 @@ void execute_error_response(command_t *cmd, client_t * client){
     pthread_mutex_unlock(&client->connection_mutex);
     fflush(stdout);
 }
+
+
 
 //handle disconnect
 void execute_disconnect_response(client_t * client, int * message_count, pthread_mutex_t* message_mutex, pthread_cond_t* message_update_cond){
