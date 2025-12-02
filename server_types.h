@@ -9,6 +9,30 @@
 #define BUFFER_SIZE 1024
 #define SERVER_PORT 12000
 
+//helper function to join command arguments with spaces starting from start_index
+void join_args(char args[][NAME_SIZE], int start_index, char* result, int max_len) {
+    result[0] = '\0';
+    int current_len = 0;
+    bool first = true;
+    
+    for (int i = start_index; i < MAX_CMD_SIZE && args[i][0] != '\0'; i++) {
+        //add space before arg except first
+        if (!first && current_len < max_len - 1) {
+            strcat(result, " ");
+            current_len++;
+        }
+        
+        int arg_len = strlen(args[i]);
+        if (current_len + arg_len < max_len - 1) {
+            strcat(result, args[i]);
+            current_len += arg_len;
+            first = false;
+        } else {
+            break; //buffer full
+        }
+    }
+}
+
 // linked list node struct
 
 typedef struct client_node{
