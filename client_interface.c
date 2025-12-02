@@ -279,8 +279,8 @@ void *user_input(void *arg){
             else if (strlen(input) > 0) {
                 udp_socket_write(client->sd, &client->server_addr, input, strlen(input) + 1);
                 //reprint prompt for next command
-                printf("[%s] > ", client->name);
-                fflush(stdout);
+                //printf("[%s] > ", client->name);
+                //fflush(stdout);
             }
         }
     }

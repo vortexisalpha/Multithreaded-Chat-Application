@@ -3,11 +3,9 @@
 #define MAX_HISTORY 20 
 #define MAX_NAMES 50
 #define MAX_NAME_LEN 30
-#define MAX_LEN  256
 #define MAX_THREADS 128
 
-#define BUFFER_SIZE 1024
-#define SERVER_PORT 12000
+// Note: MAX_LEN, BUFFER_SIZE, SERVER_PORT defined in udp.h
 
 //helper function to join command arguments with spaces starting from start_index
 void join_args(char args[][NAME_SIZE], int start_index, char* result, int max_len) {

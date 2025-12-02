@@ -16,6 +16,7 @@ typedef enum {
     DISCONN,
     DISCONN_RESPONSE, // Server response: disconnection confirmed
     KICK,
+    ERROR,           // Server response: error message
     UNKNOWN          // Unknown/invalid command
 } command_kind_t;
 
@@ -48,6 +49,8 @@ void command_handler(command_t *command, char *args[]){
         command->kind = DISCONN_RESPONSE;
     } else if (strcmp(args[0], "kick") == 0) {
         command->kind = KICK;
+    } else if (strcmp(args[0], "error") == 0) {
+        command->kind = ERROR;
     } else {
         // unknown command
         command->kind = UNKNOWN;
@@ -79,15 +82,18 @@ void command_handler(command_t *command, char *args[]){
         6. unmute$ client_name (arg0~1)
         7. rename$ new_name (arg0~1)
         8. kick$ client_name (arg0~1)
-        
+        9. unknown command (args dont matter)
+
         SERVER TO CLIENT:
         1. connsuccess$ client_name (arg0~1) - connection successful
         2. connfailed$ error_message (arg0~1) - connection failed
         3. disconnresponse$ (arg0) - disconnect confirmed
-        4. say$ sender: message (arg0~N) - broadcast message
-        5. sayto$ sender: message (arg0~N) - broadcast message
-        6. mute$ name (arg0) - add to mute list
-        7. unmute$ name (arg0) - remove from mute list
+        4. error$ error_message (arg0~1) - invalid command error
+        5. say$ sender: message (arg0~N) - broadcast message
+        6. sayto$ sender: message (arg0~N) - broadcast message
+        7. mute$ name (arg0) - add to mute list
+        8. unmute$ name (arg0) - remove from mute list
+        8. error$ error_code
     */
 }
 #endif
