@@ -11,7 +11,6 @@
 
 // make this void *
 
-
 // Discussion note with Josh:
 // 1. The spawn and join should not be in the same thread - causing blocking -> not true multi-threading
 //    Use a thread-pool configuration (which is the queue manager) (DONE, by having the detach)
@@ -62,8 +61,13 @@ client_node_t* find_client_by_address(client_node_t** head, struct sockaddr_in* 
 
 void *connect_to_server(void* args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+
     char* name = cmd_args->command->args[0];
     Monitor_t* client_linkedList = cmd_args->client_linkedList; 
+
+    char ** chat_history = cmd_args->chat_history;
+    int * chat_historyc = cmd_args->chat_historyc;
+
     // writer of linked list
     writer_checkin(client_linkedList); 
     // enter critical section
@@ -73,6 +77,7 @@ void *connect_to_server(void* args){
     sprintf(server_response, "connsuccess$ %s", name);
     int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, MAX_MESSAGE);
     printf("Request served: Connection successful for %s\n", name);
+
 
     //free heap allocated resources
     free(cmd_args->command);
@@ -149,8 +154,12 @@ void *say(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args;
     
     //join all arguments into full message
+    char full_message[MAX_MESSAGE + MAX_NAME_LEN + 2];
     char message[MAX_MESSAGE];
     join_args(cmd_args->command->args, 0, message, MAX_MESSAGE);
+    
+    char ** chat_history = cmd_args->chat_history;
+    int *chat_historyc = cmd_args->chat_historyc;
     
     client_node_t* node = *(cmd_args->head); 
     client_node_t* from_who; 
@@ -159,10 +168,17 @@ void *say(void *args){
     reader_checkout(cmd_args->client_linkedList); 
     reader_checkin(cmd_args->client_linkedList); 
     while(node != NULL){ 
-        char server_response[RESPONSE_BUFFER_SIZE]; 
-        snprintf(server_response, RESPONSE_BUFFER_SIZE, "say$ %s: %s", from_who->client_name, message); 
+        snprintf(full_message, MAX_MESSAGE + MAX_NAME_LEN + 2, "%s: %s",from_who->client_name, message);
+        char server_response[RESPONSE_BUFFER_SIZE];
+        snprintf(server_response, RESPONSE_BUFFER_SIZE, "say$ %s", full_message); 
+
         int rc = udp_socket_write(cmd_args->sd, &node->client_address, server_response, RESPONSE_BUFFER_SIZE); 
         node = node->next; 
+
+        if (*chat_historyc < MAX_MSGS){
+            strcpy(chat_history[*chat_historyc], full_message);
+            (*chat_historyc)++;
+        }
     }
     reader_checkout(cmd_args->client_linkedList);
     
@@ -341,11 +357,11 @@ void *handle_unknown_command(void *args){
 
 
 
-void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_in* from_addr, client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList){
+void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_in* from_addr, client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList, char** chat_history, int* chat_historyc){
     //make all threads neccesary for command to be executed and wait for them to be executed
     pthread_t t;
     execute_command_args_t *execute_args = malloc(sizeof(execute_command_args_t));
-    setup_command_args(execute_args,sd,command, from_addr, head, tail, client_linkedList);
+    setup_command_args(execute_args, sd, command, from_addr, head, tail, client_linkedList, chat_history, chat_historyc);
     printf("[DEBUG] Found command kind: %d\n", command->kind);
     switch(command->kind){
         case CONN:{
@@ -389,18 +405,20 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
 void *queue_manager(void* arg){
     queue_manager_args_t* qm_args = (queue_manager_args_t *)arg;
 
+    //initialise chat history array (pointer to first element of pointer array)
+    char ** chat_history = calloc(MAX_MSGS, sizeof(char*));    
+    int chat_historyc = 0;
+
     while(1){
         char * tokenised_command[MAX_COMMAND_LEN];
-        
        
         struct sockaddr_in* from_addr = malloc(sizeof(struct sockaddr_in));
         q_pop(qm_args->task_queue, tokenised_command, from_addr);
-        
        
         command_t* cur_command = malloc(sizeof(command_t));
         command_handler(cur_command, tokenised_command);
         worker_thread_checkin(qm_args); 
-        spawn_execute_command_threads(qm_args->sd, cur_command, from_addr, qm_args->head, qm_args->tail, qm_args->client_linkedList);
+        spawn_execute_command_threads(qm_args->sd, cur_command, from_addr, qm_args->head, qm_args->tail, qm_args->client_linkedList, chat_history, &chat_historyc);
         worker_thread_checkout(qm_args); 
     }
 }
@@ -423,7 +441,9 @@ int main(int argc, char *argv[])
     int sd;
     client_node_t *head = NULL;
     client_node_t *tail = NULL;
+
     Queue task_queue;
+
     setup(&sd, &task_queue);
 
     // init a share state (for linked list)

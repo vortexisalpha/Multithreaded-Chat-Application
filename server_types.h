@@ -1,9 +1,9 @@
 #include "cmd.h" // includes udp.h
 #include "queue.h"
-#define MAX_HISTORY 20 
 #define MAX_NAMES 50
 #define MAX_NAME_LEN 30
 #define MAX_THREADS 128
+#define CHAT_HISTORY_SIZE 15
 
 // Note: MAX_LEN, BUFFER_SIZE, SERVER_PORT defined in udp.h
 
@@ -129,15 +129,19 @@ typedef struct {
     client_node_t **head;
     client_node_t **tail;
     Monitor_t* client_linkedList; 
+    char** chat_history;
+    int* chat_historyc;
 } execute_command_args_t;
 
-void setup_command_args(execute_command_args_t* args, int sd, command_t* command, struct sockaddr_in* from_addr,client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList){
+void setup_command_args(execute_command_args_t* args, int sd, command_t* command, struct sockaddr_in* from_addr,client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList, char ** chat_history, int *chat_historyc){
     args->sd = sd;
     args->command = command;
     args->from_addr = from_addr;
     args->head = head;
     args->tail = tail;
     args->client_linkedList = client_linkedList; 
+    args->chat_history = chat_history;  
+    args->chat_historyc = chat_historyc;  
 }
 
 // listner thread argument struct
@@ -165,7 +169,6 @@ typedef struct {
     int active_worker; 
     pthread_cond_t cond_worker; 
     pthread_mutex_t pool_lock; 
-
 } queue_manager_args_t;
 
 void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList){
@@ -175,6 +178,7 @@ void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, clie
     args->tail = tail;
     args->client_linkedList = client_linkedList; 
     args->active_worker = 0;
+
     pthread_mutex_init(&args->pool_lock, NULL);
     pthread_cond_init(&args->cond_worker, NULL); 
 }
@@ -228,17 +232,6 @@ void writer_checkout(Monitor_t* client_linkedList){
         }
     pthread_mutex_unlock(&client_linkedList->lock);
 }
-
-// we need a chat history (slightly different from a queue) for (1) proposed extension (2) muted chat perservance
-// this is a global struct (which I am not sure if the data structure is optimal)?
-typedef struct {
-    char messages[MAX_HISTORY][MAX_LEN];
-    int count;
-    pthread_mutex_t mutex;
-    pthread_cond_t ok_to_read; 
-    pthread_cond_t ok_to_write; 
-} chat_history_t;
-
 
 void worker_thread_checkin(queue_manager_args_t* qm_args){
     pthread_mutex_lock(&qm_args->pool_lock);
