@@ -17,6 +17,8 @@ typedef enum {
     DISCONN,
     DISCONN_RESPONSE, // Server response: disconnection confirmed
     KICK,
+    PING,            // Server to client: ping request
+    RETPING,          // Client to server: ping response
     ERROR,           // Server response: error message
     UNKNOWN          // Unknown/invalid command
 } command_kind_t;
@@ -50,6 +52,10 @@ void command_handler(command_t *command, char *args[]){
         command->kind = DISCONN_RESPONSE;
     } else if (strcmp(args[0], "kick") == 0) {
         command->kind = KICK;
+    } else if (strcmp(args[0], "ping") == 0) {
+        command->kind = PING;
+    } else if (strcmp(args[0], "retping") == 0) {
+        command->kind = RETPING;
     } else if (strcmp(args[0], "error") == 0) {
         command->kind = ERROR;
     } else {

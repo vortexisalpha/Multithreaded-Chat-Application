@@ -1,9 +1,13 @@
 #include "cmd.h" // includes udp.h
 #include "queue.h"
+#include <time.h>
+
 #define MAX_NAMES 50
 #define MAX_NAME_LEN 30
 #define MAX_THREADS 128
 #define CHAT_HISTORY_SIZE 15
+#define INACTIVITY_THRESHOLD 180 //3mins
+#define PING_TIMEOUT 10
 
 // Note: MAX_LEN, BUFFER_SIZE, SERVER_PORT defined in udp.h
 
@@ -37,6 +41,8 @@ typedef struct client_node{
     struct client_node* next;
     struct sockaddr_in client_address;
     char client_name[NAME_SIZE];
+    time_t last_active;
+    time_t ping_sent; //time when ping was sent
 } client_node_t;
 
 
@@ -60,6 +66,8 @@ void add_client_to_list(client_node_t **head,client_node_t **tail, struct sockad
     new_node->client_name[NAME_SIZE - 1] = '\0'; //strncpy is not always null terminated
     new_node->client_address = *addr;
     new_node->next = NULL;
+    new_node->last_active = time(NULL);
+    new_node->ping_sent = 0;
 
     //if empty:
     if (*head == NULL){
@@ -70,6 +78,19 @@ void add_client_to_list(client_node_t **head,client_node_t **tail, struct sockad
         *tail = (*tail)->next;
     }
     
+}
+
+//update last_active time for a client
+void update_client_activity(client_node_t **head, struct sockaddr_in *addr) {
+    client_node_t *node = *head;
+    while (node != NULL) {
+        if (memcmp(&(node->client_address), addr, sizeof(struct sockaddr_in)) == 0) {
+            node->last_active = time(NULL);
+            node->ping_sent = 0;
+            return;
+        }
+        node = node->next;
+    }
 }
 
 void monitor_init(Monitor_t* monitor){
@@ -182,6 +203,31 @@ void setup_queue_manager_args(queue_manager_args_t* args, Queue* q, int sd, clie
     pthread_mutex_init(&args->pool_lock, NULL);
     pthread_cond_init(&args->cond_worker, NULL); 
 }
+
+
+typedef struct {
+    int sd;
+    client_node_t **head;
+    client_node_t **tail;
+    Monitor_t* client_linkedList; 
+
+    int active_worker; 
+    pthread_cond_t cond_worker; 
+    pthread_mutex_t pool_lock; 
+} connection_manager_args_t;
+
+void setup_connection_manager_args(connection_manager_args_t* args, int sd, client_node_t **head, client_node_t **tail, Monitor_t* client_linkedList){
+    args->sd = sd;
+    args->head = head;
+    args->tail = tail;
+    args->client_linkedList = client_linkedList; 
+    args->active_worker = 0;
+
+    pthread_mutex_init(&args->pool_lock, NULL);
+    pthread_cond_init(&args->cond_worker, NULL); 
+}
+
+
 
 // muted chat buffer, local to each user
 // initialise using new

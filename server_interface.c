@@ -373,6 +373,12 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
     pthread_t t;
     execute_command_args_t *execute_args = malloc(sizeof(execute_command_args_t));
     setup_command_args(execute_args, sd, command, from_addr, head, tail, client_linkedList, chat_history, chat_historyc);
+    
+    //if the connection is anything but CONN we mark it as the client behaving
+    if (command->kind != CONN) {
+        update_client_activity(head, from_addr);
+    }
+    
     printf("[DEBUG] Found command kind: %d\n", command->kind);
     switch(command->kind){
         case CONN:{
@@ -400,6 +406,12 @@ void spawn_execute_command_threads(int sd, command_t* command, struct sockaddr_i
         case KICK:
             pthread_create(&t, NULL, kick, execute_args); 
             break;
+        case RETPING:
+            // if retping command ignore it
+            free(command);
+            free(from_addr);
+            free(execute_args);
+            return; 
         case UNKNOWN:
             pthread_create(&t, NULL, handle_unknown_command, execute_args);
             break;
@@ -432,6 +444,76 @@ void *queue_manager(void* arg){
         spawn_execute_command_threads(qm_args->sd, cur_command, from_addr, qm_args->head, qm_args->tail, qm_args->client_linkedList, chat_history, &chat_historyc);
         worker_thread_checkout(qm_args); 
     }
+}
+
+void* connection_manager(void* arg){
+    connection_manager_args_t* cm_args = (connection_manager_args_t *)arg;
+
+    printf("[DEBUG] Started connection manager thread\n");
+    
+    while(1){
+        sleep(1);
+        
+        time_t current_time = time(NULL);
+        client_node_t *node;
+        client_node_t *to_ping = NULL;
+        client_node_t *to_kick = NULL;
+        char kick_name[NAME_SIZE];
+        
+        //Like a water overflowing algorithm:
+        //node "pours" into to_ping if its last command was exucuted over the threshold of seconds ago and the node is sent a ping request
+        //to_ping "pours" into to_kick if it does not respond to the request
+        reader_checkin(cm_args->client_linkedList);
+        node = *cm_args->head;
+        while(node != NULL){ 
+            double inactive_seconds = difftime(current_time, node->last_active);
+            
+            if (inactive_seconds > INACTIVITY_THRESHOLD) {
+                if (node->ping_sent == 0) {
+                    to_ping = node;
+                    break;
+                } else {
+                    double ping_wait = difftime(current_time, node->ping_sent);
+                    if (ping_wait > PING_TIMEOUT) {
+                        // no response from ping so kick client
+                        strncpy(kick_name, node->client_name, NAME_SIZE);
+                        kick_name[NAME_SIZE - 1] = '\0';
+                        to_kick = node;
+                        printf("[DEBUG] Client '%s' didn't respond to ping (waited %.0fs)\n", kick_name, ping_wait);
+                        break;
+                    }
+                }
+            }
+            node = node->next; 
+        }
+        reader_checkout(cm_args->client_linkedList);
+        
+        //send ping
+        if (to_ping != NULL) {
+            char ping_msg[MAX_MESSAGE];
+            snprintf(ping_msg, MAX_MESSAGE, "ping$");
+            udp_socket_write(cm_args->sd, &to_ping->client_address, ping_msg, MAX_MESSAGE);
+            to_ping->ping_sent = current_time;
+            printf("[DEBUG] Sent ping to '%s'\n", to_ping->client_name);
+        }
+        
+        //kick client when not responded to ping
+        if (to_kick != NULL) {
+            //disconnect to_kick
+            char server_response[MAX_MESSAGE];
+            snprintf(server_response, MAX_MESSAGE, "disconnresponse$");
+            udp_socket_write(cm_args->sd, &to_kick->client_address, server_response, MAX_MESSAGE);
+            
+            //remove from linked list
+            writer_checkin(cm_args->client_linkedList); 
+            struct sockaddr_in* removed_addr = remove_client_from_list(cm_args->head, cm_args->tail, kick_name);
+            writer_checkout(cm_args->client_linkedList);
+            
+            free(removed_addr);
+            printf("Client (%s) kicked for inactivity\n", kick_name);
+        }
+    }
+    return NULL;
 }
 
 void setup(int* sd, Queue * q){
@@ -476,7 +558,13 @@ int main(int argc, char *argv[])
     pthread_create(&queue_manager_thread, NULL, queue_manager, queue_manager_args);
     pthread_detach(queue_manager_thread);
 
+    pthread_t connection_manager_thread;
+    connection_manager_args_t *connection_manager_args = malloc(sizeof(connection_manager_args_t));
+    setup_connection_manager_args(connection_manager_args, sd, &head, &tail, client_linkedList);
+    pthread_create(&connection_manager_thread, NULL, connection_manager, connection_manager_args);
+    pthread_detach(connection_manager_thread);
 
+   
     pthread_exit(NULL); // exit main thread but keep other bg threads
     return 0;
 }

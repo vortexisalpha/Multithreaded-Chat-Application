@@ -314,6 +314,12 @@ void execute_server_command(command_t *cmd, client_t * client,  int * message_co
         case RENAME:
             rename_exec(cmd, client, message_mutex, message_update_cond);
             break;
+        case PING:
+            //tell user to respond to ping
+            printf("\n[SERVER] Ping received! Type 'retping$' to stay connected.\n");
+            printf("[%s] > ", client->name);
+            fflush(stdout);
+            break;
         default:
             break;
     }
