@@ -69,16 +69,25 @@ void *connect_to_server(void* args){
     int * chat_historyc = cmd_args->chat_historyc;
 
     // writer of linked list
-    writer_checkin(client_linkedList); 
+    writer_checkin(client_linkedList);
     // enter critical section
     add_client_to_list(cmd_args->head, cmd_args->tail, cmd_args->from_addr, name);
-    writer_checkout(client_linkedList); 
+    writer_checkout(client_linkedList);
     char server_response[BUFFER_SIZE];
     sprintf(server_response, "connsuccess$ %s", name);
     int rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, server_response, MAX_MESSAGE);
     printf("Request served: Connection successful for %s\n", name);
 
+    char history_msg[RESPONSE_BUFFER_SIZE];
+    int start = (*chat_historyc > CHAT_HISTORY_SIZE) ? *chat_historyc - CHAT_HISTORY_SIZE : 0;
+    for (int i = start; i < *chat_historyc; i++){
+        if (chat_history[i] != NULL){
+            snprintf(history_msg, RESPONSE_BUFFER_SIZE, "say$ %s", chat_history[i]);
+            rc = udp_socket_write(cmd_args->sd, cmd_args->from_addr, history_msg, RESPONSE_BUFFER_SIZE);
+        }
+    }
 
+    printf("Sent chat history to: %s\n", name);
     //free heap allocated resources
     free(cmd_args->command);
     free(cmd_args->from_addr);
@@ -166,19 +175,21 @@ void *say(void *args){
     reader_checkin(cmd_args->client_linkedList);
     from_who = find_client_by_address(cmd_args->head, cmd_args->from_addr); 
     reader_checkout(cmd_args->client_linkedList); 
+
+    snprintf(full_message, MAX_MESSAGE + MAX_NAME_LEN + 2, "%s: %s", from_who->client_name, message);
+    char server_response[RESPONSE_BUFFER_SIZE];
+    snprintf(server_response, RESPONSE_BUFFER_SIZE, "say$ %s", full_message);
+
+
+    if (*chat_historyc < MAX_MSGS){
+        chat_history[*chat_historyc] = strdup(full_message);
+        (*chat_historyc)++;
+    }
+
     reader_checkin(cmd_args->client_linkedList); 
     while(node != NULL){ 
-        snprintf(full_message, MAX_MESSAGE + MAX_NAME_LEN + 2, "%s: %s",from_who->client_name, message);
-        char server_response[RESPONSE_BUFFER_SIZE];
-        snprintf(server_response, RESPONSE_BUFFER_SIZE, "say$ %s", full_message); 
-
         int rc = udp_socket_write(cmd_args->sd, &node->client_address, server_response, RESPONSE_BUFFER_SIZE); 
         node = node->next; 
-
-        if (*chat_historyc < MAX_MSGS){
-            strcpy(chat_history[*chat_historyc], full_message);
-            (*chat_historyc)++;
-        }
     }
     reader_checkout(cmd_args->client_linkedList);
     
