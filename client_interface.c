@@ -193,6 +193,19 @@ void *user_input_pre_connection(void *arg){
                 exit(0);
             }
             
+            //re-check connection state after fgets returns (may have connected while waiting)
+            pthread_mutex_lock(&client->connection_mutex);
+            bool now_connected = client->connected;
+            pthread_mutex_unlock(&client->connection_mutex);
+            
+            if (now_connected) {
+                //we became connected while waiting for input - forward to server
+                if (strlen(input) > 0) {
+                    udp_socket_write(client->sd, &client->server_addr, input, strlen(input) + 1);
+                }
+                continue; //loop back to sleep while connected
+            }
+            
             //check if it's a connection command
             if (strncmp(input, "conn$ ", 6) == 0) {
                 //extract username as everything after "conn$ "
