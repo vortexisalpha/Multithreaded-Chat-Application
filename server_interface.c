@@ -316,6 +316,26 @@ void *rename_client(void *args){
 
 void *kick(void *args){
     execute_command_args_t* cmd_args = (execute_command_args_t*)args; // cast to input type struct
+    
+    // check if requester is admin (first person in linked list)
+    reader_checkin(cmd_args->client_linkedList);
+    client_node_t* head_node = *(cmd_args->head);
+    bool is_admin = (head_node != NULL && 
+                     memcmp(&(head_node->client_address), cmd_args->from_addr, sizeof(struct sockaddr_in)) == 0);
+    reader_checkout(cmd_args->client_linkedList);
+    
+    // only admin can kick
+    if (!is_admin) {
+        char error_response[MAX_MESSAGE];
+        snprintf(error_response, MAX_MESSAGE, "error$ Permission denied. Only admin can kick users.");
+        udp_socket_write(cmd_args->sd, cmd_args->from_addr, error_response, MAX_MESSAGE);
+        
+        free(cmd_args->command);
+        free(cmd_args->from_addr);
+        free(args);
+        return NULL;
+    }
+    
     // remove the client from the linked list
     char* name = cmd_args->command->args[0]; 
     struct sockaddr_in* client_address; 
